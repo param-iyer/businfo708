@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weber Method Facility Location Game</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Prevent default touch actions on SVG to allow smooth dragging on mobile */
+    svg {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-map-location-dot text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Weber Point Finder</h1>
+          <p class="text-xs text-slate-400">The Classical Facility Location Optimization Game</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-tutorial" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition duration-150 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i> How to Play & Math
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Controls & Scoreboard -->
+    <section class="lg:col-span-4 flex flex-col gap-6 order-2 lg:order-1">
+      
+      <!-- Control Panel -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+        <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-indigo-400"></i> Settings & Control
+        </h2>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2 flex justify-between">
+            <span>Number of Demand Nodes:</span>
+            <span id="node-count-val" class="font-bold text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-800/30">4</span>
+          </label>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-slate-500">2</span>
+            <input type="range" id="node-count-slider" min="2" max="6" value="4" 
+                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none">
+            <span class="text-xs text-slate-500">6</span>
+          </div>
+        </div>
+
+        <button id="btn-generate" class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition duration-150 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate"></i> Generate New Map
+        </button>
+
+        <!-- Share Layout Button -->
+        <button id="btn-share" class="w-full py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-indigo-300 hover:text-white font-medium text-sm rounded-xl border border-slate-600/60 transition duration-150 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-share-nodes"></i> Share Game Links
+        </button>
+      </div>
+
+      <!-- Live & Session Statistics -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex-grow flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-trophy text-amber-400"></i> Scoreboard
+            </span>
+            <span class="text-xs font-normal text-slate-400">(Goal: Minimize Score)</span>
+          </h2>
+
+          <div class="space-y-3.5">
+            <!-- Current Facility Position (Calculated on Drop) -->
+            <div class="p-3 bg-indigo-950/30 border border-indigo-900/30 rounded-xl">
+              <div class="flex justify-between items-center text-xs text-indigo-400 font-medium mb-1">
+                <span>CURRENT SCORE</span>
+                <span id="current-coords" class="font-mono bg-indigo-950 px-1.5 py-0.5 rounded">X: 5.00, Y: 5.00</span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-2xl font-black text-white font-mono animate-pulse" id="current-score">---</span>
+                <span class="text-xs text-slate-400">weighted units</span>
+              </div>
+            </div>
+
+            <!-- Last Position Score -->
+            <div class="p-3 bg-slate-900/50 border border-slate-800 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-[10px] tracking-wider text-slate-400 font-bold block">LAST SCORE</span>
+                <span id="last-coords" class="text-xs text-slate-500 font-mono">X: --, Y: --</span>
+              </div>
+              <div class="text-right">
+                <span class="text-lg font-bold text-slate-300 font-mono" id="last-score">---</span>
+              </div>
+            </div>
+
+            <!-- Best Score -->
+            <div class="p-3 bg-emerald-950/20 border border-emerald-900/30 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-[10px] tracking-wider text-emerald-400 font-bold block flex items-center gap-1">
+                  <i class="fa-solid fa-medal"></i> PERSONAL BEST
+                </span>
+                <span id="best-coords" class="text-xs text-slate-500 font-mono">X: --, Y: --</span>
+              </div>
+              <div class="text-right">
+                <span class="text-xl font-extrabold text-emerald-400 font-mono" id="best-score">---</span>
+              </div>
+            </div>
+
+            <!-- Ideal (Weber Method Solver) -->
+            <div class="p-3 bg-cyan-950/20 border border-cyan-900/30 rounded-xl">
+              <div class="flex justify-between items-center text-[10px] tracking-wider text-cyan-400 font-bold mb-1">
+                <span>IDEAL MINIMUM (WEBER POINT)</span>
+                <span id="ideal-coords-label" class="text-slate-500 font-normal normal-case flex items-center gap-1">
+                  <i class="fa-solid fa-lock"></i> Coords hidden
+                </span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-xl font-extrabold text-cyan-300 font-mono" id="ideal-score">---</span>
+                <button id="btn-reveal" class="text-xs text-cyan-400 hover:text-cyan-300 underline font-semibold transition">
+                  Reveal Location
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accuracy indicator rating -->
+        <div class="mt-6 pt-4 border-t border-slate-700/50">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs text-slate-400">Current Accuracy Grade</span>
+            <span id="accuracy-percentage" class="text-xs font-bold text-slate-300">0%</span>
+          </div>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden mb-2">
+            <div id="accuracy-bar" class="bg-indigo-500 h-full w-[0%] transition-all duration-300"></div>
+          </div>
+          <p id="accuracy-feedback" class="text-xs text-slate-400 italic">Drag the facility to start optimization.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive Grid Map -->
+    <section class="lg:col-span-8 flex flex-col gap-6 order-1 lg:order-2">
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl flex flex-col h-full">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <i class="fa-solid fa-compass text-cyan-400"></i> Interactive Weber Grid Map
+            </h2>
+            <p class="text-xs text-slate-400">Drag the yellow facility icon to find the weighted center of minimum cost.</p>
+          </div>
+          <!-- Clear/Reset Game Stats -->
+          <button id="btn-reset-stats" class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition duration-150 flex items-center gap-1">
+            <i class="fa-solid fa-eraser"></i> Clear Highscores
+          </button>
+        </div>
+
+        <!-- Grid Visualization Area -->
+        <div class="relative flex-grow flex items-center justify-center bg-slate-900 border border-slate-950 rounded-xl overflow-hidden min-h-[350px] md:min-h-[480px]">
+          <svg id="game-svg" viewBox="-50 -50 600 600" width="100%" height="100%" class="max-w-[550px] max-h-[550px] select-none">
+            <!-- Grid Background Lines -->
+            <defs>
+              <pattern id="grid-pattern" width="50" height="50" patternUnits="userSpaceOnUse">
+                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(51, 65, 85, 0.4)" stroke-width="1" />
+              </pattern>
+              <!-- Drop shadows and gradients -->
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+              <!-- Glow filter for nodes -->
+              <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <!-- Grid Base Pattern Fill -->
+            <rect x="0" y="0" width="500" height="500" fill="url(#grid-pattern)" />
+
+            <!-- Main Axes -->
+            <line x1="0" y1="500" x2="500" y2="500" stroke="#475569" stroke-width="2" />
+            <line x1="0" y1="0" x2="0" y2="500" stroke="#475569" stroke-width="2" />
+
+            <!-- Grid Axis Markings & Labels -->
+            <!-- X-Axis Labels (0 to 10) -->
+            <g class="text-[12px] font-mono fill-slate-400 select-none">
+              <text x="0" y="525" text-anchor="middle">0</text>
+              <text x="50" y="525" text-anchor="middle">1</text>
+              <text x="100" y="525" text-anchor="middle">2</text>
+              <text x="150" y="525" text-anchor="middle">3</text>
+              <text x="200" y="525" text-anchor="middle">4</text>
+              <text x="250" y="525" text-anchor="middle">5</text>
+              <text x="300" y="525" text-anchor="middle">6</text>
+              <text x="350" y="525" text-anchor="middle">7</text>
+              <text x="400" y="525" text-anchor="middle">8</text>
+              <text x="450" y="525" text-anchor="middle">9</text>
+              <text x="500" y="525" text-anchor="middle">10</text>
+              <text x="250" y="545" text-anchor="middle" class="fill-slate-500 font-semibold tracking-wider">X-AXIS</text>
+            </g>
+
+            <!-- Y-Axis Labels (0 to 10 - reversed because SVG coordinate space has y=0 at top) -->
+            <g class="text-[12px] font-mono fill-slate-400 select-none">
+              <text x="-20" y="504" text-anchor="end">0</text>
+              <text x="-20" y="454" text-anchor="end">1</text>
+              <text x="-20" y="404" text-anchor="end">2</text>
+              <text x="-20" y="354" text-anchor="end">3</text>
+              <text x="-20" y="304" text-anchor="end">4</text>
+              <text x="-20" y="254" text-anchor="end">5</text>
+              <text x="-20" y="204" text-anchor="end">6</text>
+              <text x="-20" y="154" text-anchor="end">7</text>
+              <text x="-20" y="104" text-anchor="end">8</text>
+              <text x="-20" y="54" text-anchor="end">9</text>
+              <text x="-20" y="4" text-anchor="end">10</text>
+              <!-- Rotated axis title -->
+              <text x="-40" y="250" transform="rotate(-90, -40, 250)" text-anchor="middle" class="fill-slate-500 font-semibold tracking-wider">Y-AXIS</text>
+            </g>
+
+            <!-- Dynamic Weber Force Lines (Connector paths) -->
+            <g id="pull-lines-container"></g>
+
+            <!-- Ideal Optimal Weber Point Indicator (hidden/revealed dynamically) -->
+            <g id="ideal-solution-point" class="opacity-0 pointer-events-none transition-all duration-300">
+              <circle cx="0" cy="0" r="16" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-width="2" stroke-dasharray="4,4" />
+              <line x1="-12" y1="0" x2="12" y2="0" stroke="#06b6d4" stroke-width="1.5" />
+              <line x1="0" y1="-12" x2="0" y2="12" stroke="#06b6d4" stroke-width="1.5" />
+              <text x="0" y="-22" text-anchor="middle" fill="#06b6d4" class="text-[10px] font-bold font-sans">OPTIMAL WEBER POINT</text>
+            </g>
+
+            <!-- Demand Nodes Group -->
+            <g id="nodes-container"></g>
+
+            <!-- Facility Element (Draggable) -->
+            <g id="facility-drag" class="cursor-grab active:cursor-grabbing" filter="url(#shadow)">
+              <!-- Outer hover handle -->
+              <circle cx="0" cy="0" r="24" fill="transparent" class="hover:fill-amber-500/10 transition duration-150" />
+              <!-- Primary facility core -->
+              <circle cx="0" cy="0" r="12" fill="#f59e0b" stroke="#fff" stroke-width="2.5" />
+              <circle cx="0" cy="0" r="5" fill="#78350f" />
+              <!-- Small visual accent ring -->
+              <circle cx="0" cy="0" r="18" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="2,3" class="animate-[spin_40s_linear_infinite]" />
+            </g>
+
+          </svg>
+
+          <!-- Instructions HUD Overlay inside map -->
+          <div class="absolute bottom-3 left-3 bg-slate-950/80 border border-slate-800/80 rounded-lg p-2.5 backdrop-blur-sm pointer-events-none text-[11px] max-w-[240px]">
+            <p class="font-semibold text-amber-400 mb-0.5"><i class="fa-solid fa-hand-pointer animate-pulse mr-1"></i> Objective</p>
+            <p class="text-slate-300 leading-normal">Drag the <span class="text-amber-400 font-bold">Facility (Yellow)</span> to minimize the aggregate weighted distance to all <span class="text-indigo-400 font-bold">Nodes</span>.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Explanation Modal -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <!-- Modal Header -->
+      <div class="bg-slate-750 p-5 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-indigo-400"></i> Understanding the Weber Problem
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5 text-sm text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="text-white font-bold mb-1.5">What is the Weber Problem?</h4>
+          <p>
+            Formulated by Alfred Weber, this classic operations research problem seeks to locate a central facility (e.g., a factory or warehouse) in a 2D plane to minimize the total transportation cost to a set of destination nodes (e.g., clients, retail stores).
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">The Mathematical Formula</h4>
+          <p class="mb-2">
+            The target is to find the coordinate $(x_F, y_F)$ that minimizes the objective function:
+          </p>
+          <div class="bg-slate-900 p-4 rounded-xl text-center font-mono text-cyan-400 border border-slate-950 my-2">
+            $\sum_{i=1}^{n} w_i \cdot \sqrt{(x_F - x_i)^2 + (y_F - y_i)^2}$
+          </div>
+          <p class="text-xs text-slate-400">
+            Where $w_i$ is the weight (demand) of node $i$, and the square root computes the Euclidean distance from the facility to that node.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Why is it challenging?</h4>
+          <p>
+            Unlike simple geometric center-of-gravity models (which use squared distance and can be solved with a simple average), Euclidean distance minimization does not have a closed-form algebraic solution! We must solve it iteratively.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">How is the "Ideal Score" computed?</h4>
+          <p>
+            This game uses <strong>Weiszfeld's Algorithm</strong>, an iterative optimization procedure that repeatedly computes a weighted average of the nodes, dynamically updated by the inverse of their distance to the current estimate:
+          </p>
+          <div class="bg-slate-900 p-4 rounded-xl font-mono text-xs text-cyan-400 border border-slate-950 my-2 overflow-x-auto">
+            $$x^{(k+1)} = \frac{\sum \frac{w_i x_i}{d_i}}{\sum \frac{w_i}{d_i}} \quad, \quad y^{(k+1)} = \frac{\sum \frac{w_i y_i}{d_i}}{\sum \frac{w_i}{d_i}}$$
+          </div>
+          <p class="text-xs text-slate-400">
+            Where $d_i$ is the current Euclidean distance to node $i$.
+          </p>
+        </div>
+
+        <div class="bg-indigo-950/30 border border-indigo-900/30 rounded-xl p-4">
+          <h4 class="text-indigo-400 font-bold mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-lightbulb"></i> Optimization Strategy
+          </h4>
+          <p class="text-xs">
+            Look closely at the connector lines on the grid. Thicker, opaque lines denote highly demanding destination nodes. The facility will naturally get pulled closer to highly demanding nodes to minimize cumulative transport costs.
+          </p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-750 p-4 border-t border-slate-700 text-right">
+        <button id="btn-close-modal-footer" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition">
+          Got it, let's play!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Challenge Link Modal -->
+  <div id="share-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+      <div class="bg-slate-750 p-5 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-share-nodes text-indigo-400"></i> Share Game Links
+        </h3>
+        <button id="btn-close-share" class="text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="p-6 space-y-6">
+        <!-- Option 1: Share Standard Game link -->
+        <div class="space-y-2">
+          <span class="text-xs font-bold text-slate-400 tracking-wider uppercase block">Option A: Standard Game Link</span>
+          <p class="text-xs text-slate-300">
+            Share this link to let students load the standard game with their own newly randomized layouts.
+          </p>
+          <div class="bg-slate-900 p-3 rounded-xl border border-slate-950 flex items-center gap-2">
+            <input id="share-general-input" type="text" readonly class="bg-transparent text-xs text-slate-300 font-mono focus:outline-none w-full" value="">
+            <button id="btn-copy-general" class="text-xs px-3 py-1.5 bg-slate-750 hover:bg-slate-650 text-white font-medium rounded-lg transition duration-150 flex items-center gap-1 shrink-0">
+              <i class="fa-solid fa-copy"></i> Copy
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-slate-700">
+
+        <!-- Option 2: Share Custom Challenge layout link -->
+        <div class="space-y-2">
+          <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase block">Option B: Custom Challenge Link</span>
+          <p class="text-xs text-slate-300">
+            Share this link to challenge other students to find the optimal point on your <strong>exact current map setup</strong>.
+          </p>
+          <div class="bg-slate-900 p-3 rounded-xl border border-slate-950 flex items-center gap-2">
+            <input id="share-link-input" type="text" readonly class="bg-transparent text-xs text-indigo-300 font-mono focus:outline-none w-full" value="Saving...">
+            <button id="btn-copy-link" class="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition duration-150 flex items-center gap-1 shrink-0">
+              <i class="fa-solid fa-copy"></i> Copy
+            </button>
+          </div>
+        </div>
+
+        <p id="share-toast" class="text-xs text-center text-emerald-400 font-semibold opacity-0 transition-opacity duration-300">
+          Link copied to clipboard!
+        </p>
+      </div>
+
+      <div class="bg-slate-750 p-4 border-t border-slate-700 text-right">
+        <button id="btn-close-share-footer" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-950 border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>&copy; 2026 Weber Point Finder. Built for operations research education.</p>
+      <div class="flex gap-4">
+        <span class="hover:text-slate-400 transition cursor-help"><i class="fa-solid fa-network-wired text-indigo-500 mr-1"></i> Fermat-Weber Optimization</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --- STATE MANAGEMENT ---
+    let gameData = {
+      nodes: [],
+      facility: { x: 5.0, y: 5.0 }, // starts at (5,5)
+      facilityBeforeDrag: { x: 5.0, y: 5.0 }, // tracking pre-drag position
+      lastDroppedFacility: null,
+      bestFacility: null,
+      idealSolution: null,
+      isDragging: false,
+      scores: {
+        current: null,
+        last: null,
+        best: null,
+        ideal: null
+      }
+    };
+
+    // SVG scaling factors
+    const GRID_SIZE = 10;
+    const SVG_PX_SIZE = 500; // 0 to 500 width/height inside viewbox
+
+    // --- DOM REFERENCES ---
+    const svg = document.getElementById('game-svg');
+    const nodesContainer = document.getElementById('nodes-container');
+    const pullLinesContainer = document.getElementById('pull-lines-container');
+    const facilityDrag = document.getElementById('facility-drag');
+    const idealPointIndicator = document.getElementById('ideal-solution-point');
+
+    const nodeCountSlider = document.getElementById('node-count-slider');
+    const nodeCountVal = document.getElementById('node-count-val');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnResetStats = document.getElementById('btn-reset-stats');
+    const btnReveal = document.getElementById('btn-reveal');
+    const btnTutorial = document.getElementById('btn-tutorial');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+    const tutorialModal = document.getElementById('tutorial-modal');
+
+    // Sharing elements
+    const btnShare = document.getElementById('btn-share');
+    const shareModal = document.getElementById('share-modal');
+    const btnCloseShare = document.getElementById('btn-close-share');
+    const btnCloseShareFooter = document.getElementById('btn-close-share-footer');
+    const shareLinkInput = document.getElementById('share-link-input');
+    const shareGeneralInput = document.getElementById('share-general-input');
+    const btnCopyLink = document.getElementById('btn-copy-link');
+    const btnCopyGeneral = document.getElementById('btn-copy-general');
+    const shareToast = document.getElementById('share-toast');
+
+    const scoreCurrentEl = document.getElementById('current-score');
+    const scoreLastEl = document.getElementById('last-score');
+    const scoreBestEl = document.getElementById('best-score');
+    const scoreIdealEl = document.getElementById('ideal-score');
+    const coordsCurrentEl = document.getElementById('current-coords');
+    const coordsLastEl = document.getElementById('last-coords');
+    const coordsBestEl = document.getElementById('best-coords');
+    const idealCoordsLabelEl = document.getElementById('ideal-coords-label');
+
+    const accuracyPercentageEl = document.getElementById('accuracy-percentage');
+    const accuracyBarEl = document.getElementById('accuracy-bar');
+    const accuracyFeedbackEl = document.getElementById('accuracy-feedback');
+
+    // --- FIREBASE INITIALIZATION & AUTH ---
+    let db = null;
+    let auth = null;
+    let appId = 'default-app-id';
+
+    function initFirebase() {
+      try {
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'weber-location-game-2026';
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          const firebaseConfig = JSON.parse(__firebase_config);
+          
+          // Guard against multiple initializations
+          if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+          }
+          
+          db = firebase.firestore();
+          auth = firebase.auth();
+          
+          // Authenticate anonymously (RULE 3)
+          const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await auth.signInWithCustomToken(__initial_auth_token);
+            } else {
+              await auth.signInAnonymously();
+            }
+          };
+          initAuth().then(() => {
+            // Check if loading layout from shared URL
+            checkForSharedLayout();
+          });
+        }
+      } catch (err) {
+        console.error("Firebase init failed: ", err);
+      }
+    }
+
+    // --- GAME MATH UTILITIES ---
+
+    // Generate integer coordinates from 0 to 10 excluding (5,5)
+    function generateRandomGridCoord() {
+      let x, y;
+      do {
+        x = Math.floor(Math.random() * 11);
+        y = Math.floor(Math.random() * 11);
+      } while (x === 5 && y === 5);
+      return { x, y };
+    }
+
+    // Generate N distinct integer coordinates, excluding (5,5)
+    function generateUniqueNodePositions(count) {
+      const positions = [];
+      while (positions.length < count) {
+        const candidate = generateRandomGridCoord();
+        const exists = positions.some(p => p.x === candidate.x && p.y === candidate.y);
+        if (!exists) {
+          positions.push(candidate);
+        }
+      }
+      return positions;
+    }
+
+    // Allocate integer weights summing exactly to 100 with minimum weight per node
+    function generateNodeWeights(count) {
+      const minWeight = 8;
+      const totalAvailable = 100 - (count * minWeight);
+      
+      let rawWeights = [];
+      for (let i = 0; i < count; i++) {
+        rawWeights.push(Math.random());
+      }
+      const rawSum = rawWeights.reduce((a, b) => a + b, 0);
+      
+      let weights = rawWeights.map(w => Math.round((w / rawSum) * totalAvailable) + minWeight);
+      
+      // Rectify roundoff errors to sum exactly to 100
+      let currentSum = weights.reduce((a, b) => a + b, 0);
+      let diff = 100 - currentSum;
+      
+      // Distribute discrepancy to the largest elements
+      while (diff !== 0) {
+        const step = diff > 0 ? 1 : -1;
+        const targetIdx = weights.indexOf(Math.max(...weights));
+        weights[targetIdx] += step;
+        diff -= step;
+      }
+
+      return weights;
+    }
+
+    // Calculate weighted distance
+    function computeCost(nodes, fX, fY) {
+      let sum = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const dist = Math.hypot(fX - n.x, fY - n.y);
+        sum += n.weight * dist;
+      }
+      return sum;
+    }
+
+    // Weiszfeld's Algorithm for the optimal geometric median (Weber Point)
+    function solveWeberProblem(nodes) {
+      let sumX = 0, sumY = 0;
+      nodes.forEach(n => { sumX += n.x; sumY += n.y; });
+      let x = sumX / nodes.length;
+      let y = sumY / nodes.length;
+
+      const eps = 1e-8;
+      const maxIterations = 300;
+
+      for (let iter = 0; iter < maxIterations; iter++) {
+        let numX = 0, numY = 0, den = 0;
+        let coincidentalNode = null;
+
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          const d = Math.hypot(x - n.x, y - n.y);
+          if (d < eps) {
+            coincidentalNode = n;
+            break;
+          }
+          const wOverD = n.weight / d;
+          numX += wOverD * n.x;
+          numY += wOverD * n.y;
+          den += wOverD;
+        }
+
+        if (coincidentalNode !== null) {
+          let rx = 0, ry = 0;
+          for (let j = 0; j < nodes.length; j++) {
+            if (nodes[j] === coincidentalNode) continue;
+            const d = Math.hypot(coincidentalNode.x - nodes[j].x, coincidentalNode.y - nodes[j].y);
+            rx += nodes[j].weight * (coincidentalNode.x - nodes[j].x) / d;
+            ry += nodes[j].weight * (coincidentalNode.y - nodes[j].y) / d;
+          }
+          const r = Math.hypot(rx, ry);
+          if (r <= coincidentalNode.weight) {
+            return { x: coincidentalNode.x, y: coincidentalNode.y, cost: computeCost(nodes, coincidentalNode.x, coincidentalNode.y) };
+          } else {
+            x += (Math.random() - 0.5) * 1e-4;
+            y += (Math.random() - 0.5) * 1e-4;
+            continue;
+          }
+        }
+
+        const nextX = numX / den;
+        const nextY = numY / den;
+
+        if (Math.hypot(nextX - x, nextY - y) < eps) {
+          x = nextX;
+          y = nextY;
+          break;
+        }
+        x = nextX;
+        y = nextY;
+      }
+
+      return { x, y, cost: computeCost(nodes, x, y) };
+    }
+
+    // --- GAME RENDERING AND INTERACTION ---
+
+    // Map mathematical coordinates to SVG display space
+    function mathToSvgCoords(mathX, mathY) {
+      const svgX = (mathX / GRID_SIZE) * SVG_PX_SIZE;
+      const svgY = ((GRID_SIZE - mathY) / GRID_SIZE) * SVG_PX_SIZE;
+      return { x: svgX, y: svgY };
+    }
+
+    function svgToMathCoords(svgX, svgY) {
+      let mathX = (svgX / SVG_PX_SIZE) * GRID_SIZE;
+      let mathY = GRID_SIZE - ((svgY / SVG_PX_SIZE) * GRID_SIZE);
+      
+      // Clamp values within math limits
+      mathX = Math.max(0, Math.min(GRID_SIZE, mathX));
+      mathY = Math.max(0, Math.min(GRID_SIZE, mathY));
+      
+      return { x: mathX, y: mathY };
+    }
+
+    function updateFacilityVisualPosition(x, y) {
+      const svgPos = mathToSvgCoords(x, y);
+      facilityDrag.setAttribute('transform', `translate(${svgPos.x}, ${svgPos.y})`);
+    }
+
+    function renderNodes() {
+      nodesContainer.innerHTML = '';
+      gameData.nodes.forEach((node, idx) => {
+        const svgPos = mathToSvgCoords(node.x, node.y);
+        
+        // Group container for a node
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('transform', `translate(${svgPos.x}, ${svgPos.y})`);
+        
+        // Pulse ring representing demand scale
+        const pulseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        pulseCircle.setAttribute('cx', '0');
+        pulseCircle.setAttribute('cy', '0');
+        const r = 8 + (node.weight / 100) * 28;
+        pulseCircle.setAttribute('r', r);
+        pulseCircle.setAttribute('fill', 'rgba(99, 102, 241, 0.12)');
+        pulseCircle.setAttribute('stroke', 'rgba(129, 140, 248, 0.4)');
+        pulseCircle.setAttribute('stroke-width', '1.5');
+        
+        // Inner core circle
+        const coreCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        coreCircle.setAttribute('cx', '0');
+        coreCircle.setAttribute('cy', '0');
+        coreCircle.setAttribute('r', '8');
+        coreCircle.setAttribute('fill', '#4f46e5');
+        coreCircle.setAttribute('stroke', '#818cf8');
+        coreCircle.setAttribute('stroke-width', '2');
+        coreCircle.setAttribute('filter', 'url(#glow-cyan)');
+
+        // Node Label with weight / demand
+        const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textElement.setAttribute('x', '0');
+        textElement.setAttribute('y', '24');
+        textElement.setAttribute('text-anchor', 'middle');
+        textElement.setAttribute('fill', '#cbd5e1');
+        textElement.setAttribute('class', 'text-[11px] font-bold font-mono');
+        textElement.textContent = `W:${node.weight}`;
+
+        // Node Coordinate bubble
+        const coordText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        coordText.setAttribute('x', '0');
+        coordText.setAttribute('y', '-16');
+        coordText.setAttribute('text-anchor', 'middle');
+        coordText.setAttribute('fill', '#64748b');
+        coordText.setAttribute('class', 'text-[10px] font-semibold font-mono');
+        coordText.textContent = `(${node.x},${node.y})`;
+
+        group.appendChild(pulseCircle);
+        group.appendChild(coreCircle);
+        group.appendChild(textElement);
+        group.appendChild(coordText);
+        nodesContainer.appendChild(group);
+      });
+    }
+
+    // Renders physical lines connecting facility to each destination node
+    function renderPullLines() {
+      pullLinesContainer.innerHTML = '';
+      const facSvg = mathToSvgCoords(gameData.facility.x, gameData.facility.y);
+
+      gameData.nodes.forEach(node => {
+        const nodeSvg = mathToSvgCoords(node.x, node.y);
+        
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', facSvg.x);
+        line.setAttribute('y1', facSvg.y);
+        line.setAttribute('x2', nodeSvg.x);
+        line.setAttribute('y2', nodeSvg.y);
+        
+        const weightFactor = node.weight / 100;
+        const thickness = 1 + (weightFactor * 8); 
+        const opacity = 0.15 + (weightFactor * 0.6); 
+        
+        line.setAttribute('stroke', '#a1a1aa');
+        line.setAttribute('stroke-width', thickness);
+        line.setAttribute('stroke-opacity', opacity);
+        line.setAttribute('stroke-dasharray', '4,3');
+        
+        pullLinesContainer.appendChild(line);
+      });
+    }
+
+    function hideIdealSolution() {
+      idealPointIndicator.classList.add('opacity-0');
+      idealPointIndicator.classList.add('pointer-events-none');
+      btnReveal.innerHTML = '<i class="fa-solid fa-eye mr-1"></i> Reveal Location';
+      btnReveal.className = "text-xs text-cyan-400 hover:text-cyan-300 underline font-semibold transition";
+      idealCoordsLabelEl.innerHTML = '<i class="fa-solid fa-lock"></i> Coords hidden';
+    }
+
+    function showIdealSolution() {
+      const idealSvg = mathToSvgCoords(gameData.idealSolution.x, gameData.idealSolution.y);
+      idealPointIndicator.setAttribute('transform', `translate(${idealSvg.x}, ${idealSvg.y})`);
+      
+      idealPointIndicator.classList.remove('opacity-0');
+      idealPointIndicator.classList.remove('pointer-events-none');
+      btnReveal.innerHTML = '<i class="fa-solid fa-eye-slash mr-1"></i> Hide Location';
+      btnReveal.className = "text-xs text-slate-400 hover:text-slate-300 underline font-semibold transition";
+      
+      // Update coordinates dynamically on reveal
+      idealCoordsLabelEl.innerHTML = `<i class="fa-solid fa-unlock text-cyan-400"></i> X: ${gameData.idealSolution.x.toFixed(2)}, Y: ${gameData.idealSolution.y.toFixed(2)}`;
+    }
+
+    // Updates accuracy indicator and grading scores
+    function updateAccuracyMetrics() {
+      const currentDist = gameData.scores.current;
+      const idealDist = gameData.scores.ideal;
+
+      if (!currentDist || !idealDist) {
+        accuracyPercentageEl.textContent = `0%`;
+        accuracyBarEl.style.width = `0%`;
+        accuracyBarEl.className = "bg-indigo-500 h-full w-[0%]";
+        accuracyFeedbackEl.innerHTML = "Drag and release the facility to see your score & grade!";
+        return;
+      }
+
+      const excessCost = currentDist - idealDist;
+      let accuracy = 100 - (excessCost / idealDist) * 100;
+      accuracy = Math.max(0, Math.min(100, accuracy));
+      
+      accuracyPercentageEl.textContent = `${accuracy.toFixed(1)}%`;
+      accuracyBarEl.style.width = `${accuracy}%`;
+
+      if (accuracy >= 99.8) {
+        accuracyBarEl.className = "bg-emerald-500 h-full transition-all duration-300";
+        accuracyFeedbackEl.innerHTML = "<span class='text-emerald-400 font-bold'>Perfect!</span> You found the exact Weber Point.";
+      } else if (accuracy >= 98) {
+        accuracyBarEl.className = "bg-emerald-400 h-full transition-all duration-300";
+        accuracyFeedbackEl.innerHTML = "<span class='text-emerald-400 font-semibold'>Excellent!</span> Virtually optimal location.";
+      } else if (accuracy >= 94) {
+        accuracyBarEl.className = "bg-cyan-400 h-full transition-all duration-300";
+        accuracyFeedbackEl.innerHTML = "<span class='text-cyan-400 font-medium'>Very Good.</span> Can you optimize it a tiny bit more?";
+      } else if (accuracy >= 85) {
+        accuracyBarEl.className = "bg-amber-500 h-full transition-all duration-300";
+        accuracyFeedbackEl.innerHTML = "<span class='text-amber-400'>Getting warm.</span> Pull toward the larger nodes.";
+      } else {
+        accuracyBarEl.className = "bg-rose-500 h-full transition-all duration-300";
+        accuracyFeedbackEl.innerHTML = "Suboptimal. Observe the pull of the weight lines and try again.";
+      }
+    }
+
+    // --- GAME ACTIONS / LOOP ---
+
+    function createNewGame() {
+      hideIdealSolution();
+      const nodeCount = parseInt(nodeCountSlider.value);
+      
+      // Generate node structures
+      const coords = generateUniqueNodePositions(nodeCount);
+      const weights = generateNodeWeights(nodeCount);
+      
+      gameData.nodes = coords.map((c, i) => ({
+        id: i,
+        x: c.x,
+        y: c.y,
+        weight: weights[i]
+      }));
+
+      setupLayoutWithCurrentNodes();
+    }
+
+    function setupLayoutWithCurrentNodes() {
+      // Clear old state, reset facility to middle (5,5)
+      gameData.facility = { x: 5.0, y: 5.0 };
+      gameData.facilityBeforeDrag = { x: 5.0, y: 5.0 };
+      gameData.lastDroppedFacility = null;
+      gameData.bestFacility = { x: 5.0, y: 5.0 };
+      
+      // Solve Weber math
+      const idealResult = solveWeberProblem(gameData.nodes);
+      gameData.idealSolution = { x: idealResult.x, y: idealResult.y };
+      gameData.scores.ideal = idealResult.cost;
+
+      // On launch, calculate the initial (5,5) score and display it as CURRENT & BEST
+      const initialCost = computeCost(gameData.nodes, 5.0, 5.0);
+      gameData.scores.current = initialCost;
+      gameData.scores.best = initialCost;
+      gameData.scores.last = null; // No last score yet since no moves were made
+
+      // Update scoreboard visuals
+      scoreIdealEl.textContent = idealResult.cost.toFixed(2);
+      
+      scoreCurrentEl.textContent = initialCost.toFixed(2);
+      scoreCurrentEl.classList.remove('animate-pulse');
+      coordsCurrentEl.textContent = 'X: 5.00, Y: 5.00';
+      
+      scoreLastEl.textContent = '---';
+      coordsLastEl.textContent = 'X: --, Y: --';
+      
+      scoreBestEl.textContent = initialCost.toFixed(2);
+      coordsBestEl.textContent = 'X: 5.00, Y: 5.00';
+
+      // Render
+      renderNodes();
+      updateFacilityVisualPosition(5.0, 5.0);
+      renderPullLines();
+      updateAccuracyMetrics();
+    }
+
+    function handleDragMove(evt) {
+      if (!gameData.isDragging) return;
+      evt.preventDefault();
+
+      const rect = svg.getBoundingClientRect();
+      
+      let clientX, clientY;
+      if (evt.touches && evt.touches.length > 0) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+      } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+      }
+
+      const relativeX = clientX - rect.left;
+      const relativeY = clientY - rect.top;
+
+      const viewportX = (relativeX / rect.width) * (SVG_PX_SIZE + 100) - 50;
+      const viewportY = (relativeY / rect.height) * (SVG_PX_SIZE + 100) - 50;
+
+      const mathPos = svgToMathCoords(viewportX, viewportY);
+      gameData.facility = mathPos;
+
+      updateFacilityVisualPosition(mathPos.x, mathPos.y);
+      
+      // Update coordinates dynamically, but keep the current score text as a compact waiting label
+      coordsCurrentEl.textContent = `X: ${gameData.facility.x.toFixed(2)}, Y: ${gameData.facility.y.toFixed(2)}`;
+      scoreCurrentEl.textContent = "Waiting...";
+      scoreCurrentEl.classList.add('animate-pulse');
+      
+      renderPullLines();
+    }
+
+    function handleDragStart(evt) {
+      gameData.isDragging = true;
+      // Record starting position before the drag to preserve as 'Last Score'
+      gameData.facilityBeforeDrag = { ...gameData.facility };
+      
+      svg.addEventListener('mousemove', handleDragMove);
+      svg.addEventListener('touchmove', handleDragMove, { passive: false });
+    }
+
+    function handleDragEnd() {
+      if (!gameData.isDragging) return;
+      gameData.isDragging = false;
+
+      svg.removeEventListener('mousemove', handleDragMove);
+      svg.removeEventListener('touchmove', handleDragMove);
+
+      // On release/drop, the PREVIOUS current score is pushed into LAST SCORE
+      gameData.scores.last = gameData.scores.current;
+      gameData.lastDroppedFacility = { ...gameData.facilityBeforeDrag };
+
+      scoreLastEl.textContent = gameData.scores.last.toFixed(2);
+      coordsLastEl.textContent = `X: ${gameData.lastDroppedFacility.x.toFixed(2)}, Y: ${gameData.lastDroppedFacility.y.toFixed(2)}`;
+
+      // Calculate and display new CURRENT score
+      const finalCost = computeCost(gameData.nodes, gameData.facility.x, gameData.facility.y);
+      gameData.scores.current = finalCost;
+      scoreCurrentEl.textContent = finalCost.toFixed(2);
+      scoreCurrentEl.classList.remove('animate-pulse');
+      coordsCurrentEl.textContent = `X: ${gameData.facility.x.toFixed(2)}, Y: ${gameData.facility.y.toFixed(2)}`;
+
+      // Check if it is a new Personal Best
+      if (gameData.scores.best === null || finalCost < gameData.scores.best) {
+        gameData.scores.best = finalCost;
+        gameData.bestFacility = { ...gameData.facility };
+        
+        scoreBestEl.textContent = finalCost.toFixed(2);
+        coordsBestEl.textContent = `X: ${gameData.facility.x.toFixed(2)}, Y: ${gameData.facility.y.toFixed(2)}`;
+      }
+
+      updateAccuracyMetrics();
+      renderPullLines();
+    }
+
+    // --- COLLABORATIVE CLOUD SHARING FEATURES ---
+
+    async function handleShareLayout() {
+      // Setup options
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+      shareGeneralInput.value = cleanUrl;
+      shareLinkInput.value = "Generating secure challenge...";
+
+      // Show share interface
+      shareModal.classList.remove('hidden');
+
+      if (!db) {
+        shareLinkInput.value = "Sharing database offline. Try again.";
+        return;
+      }
+      
+      try {
+        btnShare.disabled = true;
+        btnShare.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Loading...';
+
+        // Check auth status first (RULE 3)
+        let currentUser = auth.currentUser;
+        if (!currentUser) {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await auth.signInWithCustomToken(__initial_auth_token);
+          } else {
+            await auth.signInAnonymously();
+          }
+        }
+
+        // Store configuration in shared layouts path (Corrected RULE 1 path structure)
+        const payload = {
+          nodes: gameData.nodes,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          nodeCount: gameData.nodes.length
+        };
+        
+        const docRef = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('shared_layouts').add(payload);
+        
+        // Construct unique shareable challenge link
+        const shareUrl = `${cleanUrl}?layoutId=${docRef.id}`;
+        shareLinkInput.value = shareUrl;
+      } catch (err) {
+        console.error("Failed to share layout: ", err);
+        shareLinkInput.value = "Error generating challenge link.";
+      } finally {
+        btnShare.disabled = false;
+        btnShare.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share Game Links';
+      }
+    }
+
+    async function checkForSharedLayout() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const layoutId = urlParams.get('layoutId');
+      
+      if (layoutId && db) {
+        try {
+          // Retrieve layout details (RULE 1 & RULE 2)
+          const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('shared_layouts').doc(layoutId);
+          const docSnap = await docRef.get();
+          
+          if (docSnap.exists) {
+            const data = docSnap.data();
+            if (data && data.nodes) {
+              gameData.nodes = data.nodes;
+              nodeCountSlider.value = data.nodes.length;
+              nodeCountVal.textContent = data.nodes.length;
+              
+              setupLayoutWithCurrentNodes();
+              
+              // Clean address bar so the challenge stays but cleans for next actions
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } else {
+            console.warn("Shared layout not found.");
+          }
+        } catch (err) {
+          console.error("Failed to load shared layout: ", err);
+        }
+      }
+    }
+
+    // Helper to copy text and pop a visual toast alert
+    function copyTextToClipboard(element) {
+      element.select();
+      element.setSelectionRange(0, 99999); 
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          shareToast.classList.remove('opacity-0');
+          setTimeout(() => {
+            shareToast.classList.add('opacity-0');
+          }, 2000);
+        }
+      } catch (err) {
+        console.error('Unable to copy', err);
+      }
+    }
+
+    // --- EVENT LISTENERS ---
+
+    // Drag-and-drop triggers
+    facilityDrag.addEventListener('mousedown', handleDragStart);
+    facilityDrag.addEventListener('touchstart', handleDragStart, { passive: false });
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchend', handleDragEnd);
+
+    // Node Count Slider
+    nodeCountSlider.addEventListener('input', (e) => {
+      nodeCountVal.textContent = e.target.value;
+    });
+
+    // Control Buttons
+    btnGenerate.addEventListener('click', createNewGame);
+    btnShare.addEventListener('click', handleShareLayout);
+    
+    btnResetStats.addEventListener('click', () => {
+      gameData.scores.last = null;
+      gameData.scores.best = null;
+      gameData.lastDroppedFacility = null;
+      gameData.bestFacility = null;
+
+      scoreLastEl.textContent = '---';
+      coordsLastEl.textContent = 'X: --, Y: --';
+      scoreBestEl.textContent = '---';
+      coordsBestEl.textContent = 'X: --, Y: --';
+
+      scoreCurrentEl.textContent = '---';
+      coordsCurrentEl.textContent = 'X: 5.00, Y: 5.00';
+      
+      // Reset facility back to start (5,5)
+      gameData.facility = { x: 5.0, y: 5.0 };
+      gameData.facilityBeforeDrag = { x: 5.0, y: 5.0 };
+      updateFacilityVisualPosition(5.0, 5.0);
+      renderPullLines();
+      
+      // Calculate initial (5,5) score again as the default start
+      const initialCost = computeCost(gameData.nodes, 5.0, 5.0);
+      gameData.scores.current = initialCost;
+      gameData.scores.best = initialCost;
+      scoreCurrentEl.textContent = initialCost.toFixed(2);
+      scoreBestEl.textContent = initialCost.toFixed(2);
+      coordsBestEl.textContent = 'X: 5.00, Y: 5.00';
+      
+      updateAccuracyMetrics();
+    });
+
+    // Reveal Action
+    btnReveal.addEventListener('click', () => {
+      const isHidden = idealPointIndicator.classList.contains('opacity-0');
+      if (isHidden) {
+        showIdealSolution();
+      } else {
+        hideIdealSolution();
+      }
+    });
+
+    // Modal Operations
+    const toggleModal = () => tutorialModal.classList.toggle('hidden');
+    btnTutorial.addEventListener('click', toggleModal);
+    btnCloseModal.addEventListener('click', toggleModal);
+    btnCloseModalFooter.addEventListener('click', toggleModal);
+    tutorialModal.addEventListener('click', (e) => {
+      if (e.target === tutorialModal) toggleModal();
+    });
+
+    // Share Modal Close operations
+    const toggleShareModal = () => shareModal.classList.add('hidden');
+    btnCloseShare.addEventListener('click', toggleShareModal);
+    btnCloseShareFooter.addEventListener('click', toggleShareModal);
+    shareModal.addEventListener('click', (e) => {
+      if (e.target === shareModal) toggleShareModal();
+    });
+
+    btnCopyLink.addEventListener('click', () => copyTextToClipboard(shareLinkInput));
+    btnCopyGeneral.addEventListener('click', () => copyTextToClipboard(shareGeneralInput));
+
+    // --- INIT ---
+    window.onload = function() {
+      createNewGame();
+      initFirebase();
+    }
+  </script>
+</body>
+</html>
