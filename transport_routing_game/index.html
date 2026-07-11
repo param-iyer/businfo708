@@ -196,10 +196,10 @@
         </div>
 
         <!-- Grid Rendering Container (Hidden until Setup Completed) -->
-        <div id="render-viewport" class="relative flex-grow bg-slate-950 border border-slate-850 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center hidden">
+        <div id="render-viewport" class="relative flex-grow bg-slate-950 border border-slate-850 rounded-xl overflow-hidden min-h-[380px] flex flex-col items-center justify-center p-4 hidden">
           
-          <!-- Live Floating On-Map Trip Progress HUD -->
-          <div id="onmap-progress-hud" class="absolute top-4 left-4 right-4 bg-slate-900/95 border border-emerald-500/30 px-4 py-3 rounded-xl shadow-xl flex items-center justify-between z-10 transition-all duration-200 hidden">
+          <!-- Live Floating On-Map Trip Progress HUD (Positioned above the grid) -->
+          <div id="onmap-progress-hud" class="w-full max-w-[480px] bg-slate-900 border border-emerald-500/30 px-4 py-3 rounded-xl shadow-xl flex items-center justify-between z-10 transition-all duration-200 mb-4 hidden">
             <div class="flex items-center gap-3">
               <div class="w-3 h-3 bg-amber-500 rounded-full animate-ping"></div>
               <div>
