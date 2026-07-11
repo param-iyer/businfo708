@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optimal Route Finder: TSP Simulator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    svg {
+      touch-action: none;
+    }
+    /* Smooth hover animations for interactive nodes */
+    .node-clickable {
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+    .node-clickable:hover:not(.node-disabled) {
+      cursor: pointer;
+      filter: brightness(1.2) drop-shadow(0 0 4px rgba(16, 185, 129, 0.5));
+    }
+    .node-disabled {
+      cursor: not-allowed !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 shadow-md shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-emerald-600 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+          <i class="fa-solid fa-route text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">Optimal Route Finder</h1>
+          <p class="text-xs text-slate-400">Classroom Traveling Salesperson Problem (TSP) Lab</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-tutorial" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition duration-150 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-emerald-400"></i> Learn TSP & Complexity
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    
+    <!-- Left Column: Scoreboard / Controls -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+
+      <!-- Scoreboard Card -->
+      <div id="scoreboard-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 hidden">
+        <h2 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center justify-between">
+          <span><i class="fa-solid fa-ranking-star text-emerald-500 mr-1.5"></i> Route Scoreboard</span>
+          <span class="text-[10px] text-slate-500 normal-case" id="current-stop-label">Active Stops</span>
+        </h2>
+
+        <div class="grid grid-cols-1 gap-3">
+          <!-- Active / Live Path Builder Score -->
+          <div class="p-4 bg-emerald-950/20 border border-emerald-900/40 rounded-xl">
+            <div class="flex justify-between items-center text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
+              <span>Current Attempt Route</span>
+              <span id="current-status-badge" class="bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-mono">Completed</span>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl font-black font-mono text-white" id="score-current-dist">0.00</span>
+              <span class="text-xs text-slate-400">total distance units</span>
+            </div>
+            <div class="mt-2 text-xs text-slate-300 font-mono flex items-center gap-1 bg-slate-950/50 p-2 rounded border border-slate-800">
+              <span class="text-slate-500 font-bold">Path:</span>
+              <span id="score-current-path" class="text-emerald-300">Home → Home</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Last Attempt -->
+          <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last Attempt</span>
+            <span class="text-xl font-bold font-mono text-slate-300 mt-1" id="score-last-dist">---</span>
+            <span class="text-[9px] text-slate-500 mt-1 font-mono truncate" id="score-last-path">No previous run</span>
+          </div>
+
+          <!-- Personal Best -->
+          <div class="p-3 bg-teal-950/30 border border-teal-900/40 rounded-xl flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-teal-400 uppercase tracking-wider block">Personal Best</span>
+            <span class="text-xl font-bold font-mono text-teal-300 mt-1" id="score-best-dist">---</span>
+            <span class="text-[9px] text-teal-500 mt-1 font-mono truncate" id="score-best-path">---</span>
+          </div>
+        </div>
+
+        <!-- Global Mathematical Target Benchmark -->
+        <div class="p-3.5 bg-blue-950/20 border border-blue-900/30 rounded-xl space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-blue-400 font-bold uppercase tracking-wider text-[10px]"><i class="fa-solid fa-bullseye"></i> Theoretical TSP Optimum</span>
+            <span id="score-optimal-dist" class="font-mono font-bold text-blue-300"><i class="fa-solid fa-lock text-xs mr-1 text-blue-500"></i> Locked</span>
+          </div>
+          
+          <p class="text-[10px] text-slate-400 font-mono leading-normal" id="score-optimal-path">
+            Path: Click "Reveal" below to calculate absolute minimum.
+          </p>
+
+          <button id="btn-reveal-optimal" class="w-full py-1.5 bg-blue-900/50 hover:bg-blue-800/70 border border-blue-700/50 rounded-lg text-[10px] font-bold text-blue-300 transition duration-150 flex items-center justify-center gap-1">
+            <i class="fa-solid fa-eye text-xs"></i> Reveal Optimal Route
+          </button>
+        </div>
+
+        <hr class="border-slate-800">
+
+        <!-- Accuracy grading & feedback -->
+        <div class="space-y-1">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400 font-medium">Route Efficiency vs. Optimum Target</span>
+            <span id="grading-percentage" class="font-mono font-bold text-emerald-400">100%</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="grading-bar" class="bg-emerald-500 h-full w-[100%] transition-all duration-500"></div>
+          </div>
+          <p id="grading-feedback" class="text-xs text-slate-400 italic pt-1 leading-normal">
+            This is the default chronological route! Click "Try to Improve" below to find a shorter path.
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls Panel (Changes to layout generator card) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+        <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center gap-2 border-b border-slate-800 pb-1.5">
+          <i class="fa-solid fa-gamepad text-emerald-500"></i> Settings & Trip Options
+        </h3>
+
+        <!-- Number of Stops Selector -->
+        <div>
+          <label class="block text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">Number of Stops (Nodes):</label>
+          <div class="flex items-center justify-between bg-slate-950 p-2 rounded-xl border border-slate-850">
+            <button id="btn-dec-stops" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition font-extrabold">-</button>
+            <span id="stops-value" class="font-mono font-black text-lg text-emerald-400">4</span>
+            <button id="btn-inc-stops" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition font-extrabold">+</button>
+          </div>
+        </div>
+
+        <!-- Action triggers -->
+        <div id="active-buttons-group" class="grid grid-cols-1 gap-3 hidden">
+          <button id="btn-try-improve" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-slate-950 font-black text-sm tracking-wide rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+            <i class="fa-solid fa-shoe-prints"></i> TRY TO IMPROVE
+          </button>
+          <button id="btn-generate" class="w-full py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold text-xs tracking-wider rounded-xl transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrows-rotate"></i> GENERATE NEW RANDOM MAP
+          </button>
+        </div>
+
+        <div id="setup-buttons-group">
+          <button id="btn-start-setup" class="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black text-sm tracking-wide rounded-xl shadow-lg transition duration-150 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-map-location-dot"></i> GENERATE MAP & DEFAULT ROUTE
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Interactive Flat layout with grid -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl flex flex-col h-full min-h-[500px]">
+        <div class="flex justify-between items-center gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <i class="fa-solid fa-map-marked-alt text-emerald-500"></i> Interactive Trip Matrix
+            </h2>
+            <p class="text-xs text-slate-400" id="matrix-instruction-text">Configure stop parameters on the left to initialize the grid map.</p>
+          </div>
+        </div>
+
+        <!-- Onboarding Blank Screen State -->
+        <div id="onboarding-viewport" class="flex-grow bg-slate-950 border border-slate-850 rounded-xl flex flex-col items-center justify-center p-6 text-center space-y-4 min-h-[380px]">
+          <div class="w-16 h-16 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500">
+            <i class="fa-solid fa-map-pin text-3xl text-emerald-500 animate-bounce"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-200">Map Not Placed Yet</h3>
+            <p class="text-xs text-slate-400 max-w-sm mt-1 leading-relaxed">
+              First, adjust the number of coordinate destination stops using the control panel counter, then click the layout button to populate the random grid map!
+            </p>
+          </div>
+        </div>
+
+        <!-- Grid Rendering Container (Hidden until Setup Completed) -->
+        <div id="render-viewport" class="relative flex-grow bg-slate-950 border border-slate-850 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center hidden">
+          
+          <!-- Live Floating On-Map Trip Progress HUD -->
+          <div id="onmap-progress-hud" class="absolute top-4 left-4 right-4 bg-slate-900/95 border border-emerald-500/30 px-4 py-3 rounded-xl shadow-xl flex items-center justify-between z-10 transition-all duration-200 hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-3 h-3 bg-amber-500 rounded-full animate-ping"></div>
+              <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Path Construction</p>
+                <p id="hud-path-sequence" class="text-xs font-mono font-bold text-emerald-400">Home</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p id="hud-cumulative-distance" class="text-lg font-black font-mono text-white">0.00</p>
+              <p id="hud-stop-counter" class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Stops: 1/5</p>
+            </div>
+          </div>
+
+          <!-- SVG Container representing the 0-10 Coordinate grid -->
+          <svg id="grid-svg" viewBox="-50 -50 600 600" class="w-full h-full max-w-[480px] max-h-[480px] select-none">
+            <defs>
+              <pattern id="grid-pattern" width="50" height="50" patternUnits="userSpaceOnUse">
+                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(51, 65, 85, 0.4)" stroke-width="1" />
+              </pattern>
+              <!-- Dropshadow filters -->
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/>
+              </filter>
+            </defs>
+
+            <!-- Grid Base Pattern Fill -->
+            <rect x="0" y="0" width="500" height="500" fill="url(#grid-pattern)" />
+
+            <!-- Main Axes -->
+            <line x1="0" y1="500" x2="500" y2="500" stroke="#475569" stroke-width="2.5" />
+            <line x1="0" y1="0" x2="0" y2="500" stroke="#475569" stroke-width="2.5" />
+
+            <!-- Grid Axes Labels (0 to 10) -->
+            <!-- X-Axis Labels -->
+            <g class="text-[12px] font-mono fill-slate-500 select-none">
+              <text x="0" y="525" text-anchor="middle">0</text>
+              <text x="50" y="525" text-anchor="middle">1</text>
+              <text x="100" y="525" text-anchor="middle">2</text>
+              <text x="150" y="525" text-anchor="middle">3</text>
+              <text x="200" y="525" text-anchor="middle">4</text>
+              <text x="250" y="525" text-anchor="middle">5</text>
+              <text x="300" y="525" text-anchor="middle">6</text>
+              <text x="350" y="525" text-anchor="middle">7</text>
+              <text x="400" y="525" text-anchor="middle">8</text>
+              <text x="450" y="525" text-anchor="middle">9</text>
+              <text x="500" y="525" text-anchor="middle">10</text>
+              <text x="250" y="545" text-anchor="middle" class="fill-slate-650 font-bold tracking-wider" pointer-events="none">X-AXIS</text>
+            </g>
+
+            <!-- Y-Axis Labels -->
+            <g class="text-[12px] font-mono fill-slate-500 select-none">
+              <text x="-20" y="504" text-anchor="end">0</text>
+              <text x="-20" y="454" text-anchor="end">1</text>
+              <text x="-20" y="404" text-anchor="end">2</text>
+              <text x="-20" y="354" text-anchor="end">3</text>
+              <text x="-20" y="304" text-anchor="end">4</text>
+              <text x="-20" y="254" text-anchor="end">5</text>
+              <text x="-20" y="204" text-anchor="end">6</text>
+              <text x="-20" y="154" text-anchor="end">7</text>
+              <text x="-20" y="104" text-anchor="end">8</text>
+              <text x="-20" y="54" text-anchor="end">9</text>
+              <text x="-20" y="4" text-anchor="end">10</text>
+              <text x="-40" y="250" transform="rotate(-90, -40, 250)" text-anchor="middle" class="fill-slate-650 font-bold tracking-wider" pointer-events="none">Y-AXIS</text>
+            </g>
+
+            <!-- Fully Connected Dotted Mesh Container -->
+            <g id="svg-mesh-container"></g>
+
+            <!-- Dynamic Optimal Solver Route Path (Cyan Line, hidden by default) -->
+            <path id="svg-optimal-route" d="" fill="none" stroke="#06b6d4" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8,6" class="opacity-0 transition-opacity duration-300" />
+
+            <!-- Dynamic Active Player Route Path -->
+            <path id="svg-active-route" d="" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+
+            <!-- Dynamic Interactive Overlaid Nodes (rendered programmatically) -->
+            <g id="svg-nodes-container"></g>
+
+            <!-- SVG Floating Distance HUD Tooltip -->
+            <g id="svg-distance-tooltip" class="opacity-0 pointer-events-none transition-opacity duration-150">
+              <rect x="-40" y="-28" width="80" height="20" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+              <text x="0" y="-14" id="svg-tooltip-text" text-anchor="middle" fill="#34d399" class="text-[10px] font-mono font-bold" pointer-events="none">---</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Instructions HUD Block (Moved Below the Grid/Visual Canvas) -->
+        <div id="instructions-hud" class="mt-4 bg-slate-950 border border-slate-850 rounded-xl p-3.5 space-y-2 hidden">
+          <p class="font-bold text-emerald-400 text-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-nodes"></i> Interactive Exploration Tips
+          </p>
+          <ul class="text-[11px] text-slate-400 space-y-1.5 leading-relaxed">
+            <li><strong class="text-slate-300">Hover Segments:</strong> Move your mouse cursor over the dotted network lines to view the Pythagoras distance between any stop pairs.</li>
+            <li><strong class="text-slate-300">Custom Route:</strong> Click <span class="text-emerald-400 font-semibold">"Try to Improve"</span>, then click nodes sequentially to map out a path. Conclude by clicking the green <span class="text-white font-bold">Home</span> icon.</li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mathematical TSP Tutorial modal -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-850 p-5 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-emerald-400"></i> The Traveling Salesperson Problem (TSP)
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5 text-sm text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="text-white font-bold mb-1.5">What is the Traveling Salesperson Problem?</h4>
+          <p>
+            The TSP is one of the most thoroughly studied problems in optimization and computer science. The challenge is simple to state but exceptionally hard to solve: 
+            Given a list of cities and the distances between each pair, what is the shortest possible route that visits each city exactly once and returns to the origin city?
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Combinatorial Explosion</h4>
+          <p>
+            TSP belongs to the class of **NP-hard** problems. As the number of cities $n$ grows, the number of possible unique routes grows factorially!
+          </p>
+          <ul class="list-disc list-inside space-y-1 pl-2 text-xs text-slate-400 mt-1">
+            <li><strong>3 Cities (excluding Home):</strong> $3! = 6$ possible routes</li>
+            <li><strong>5 Cities (excluding Home):</strong> $5! = 120$ possible routes</li>
+            <li><strong>6 Cities:</strong> $6! = 720$ possible routes</li>
+            <li><strong>10 Cities:</strong> $10! \approx 3.6 \text{ million}$ possible routes</li>
+            <li><strong>20 Cities:</strong> $20! \approx 2.4 \times 10^{18}$ routes (would take standard computers millions of years to brute-force!)</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Calculating Distance via Pythagoras</h4>
+          <p>
+            In this game, the distance $d_{ij}$ between any two grid coordinate positions $(x_i, y_i)$ and $(x_j, y_j)$ is computed using the Euclidean distance formula:
+          </p>
+          <div class="bg-slate-950 p-3 rounded-xl text-center font-mono text-emerald-400 border border-slate-850 my-2 text-sm">
+            $d_{ij} = \sqrt{(x_j - x_i)^2 + (y_j - y_i)^2}$
+          </div>
+        </div>
+
+        <div class="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4">
+          <h5 class="text-emerald-400 font-bold mb-1">Heuristic Algorithms</h5>
+          <p class="text-xs text-slate-300">
+            Because calculating the absolute optimal solution becomes impossible for larger systems, logistics companies (like FedEx, DHL, and UPS) utilize smart **heuristics** and approximation algorithms (e.g., Nearest Neighbor, Genetic Algorithms, and Simulated Annealing) to find near-optimal paths in seconds.
+          </p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-850 p-4 border-t border-slate-800 text-right">
+        <button id="btn-close-modal-footer" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded-lg transition">
+          Start Experimenting!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-950 border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500 shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>&copy; 2026 Optimal Route Finder. Interactive class lab for logistics & combinatorics optimization.</p>
+      <div class="flex gap-4">
+        <span class="hover:text-slate-400 transition cursor-help"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Pythagoras Euclidean Method</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    let totalStops = 4; // Default number of stops (Range: 2 - 6)
+    let gameNodes = []; // Node positions { label, x, y } - index 0 is always Home (5,5)
+    let isMapGenerated = false; // Tracks onboarding setup sequence state
+    
+    // Attempt tracking
+    let activeSelection = []; // Indices in current manual path, starting at 0 (Home)
+    let isManualRunActive = false; // Whether user is actively clicking to solve
+
+    let attempts = {
+      current: { path: [], dist: 0, completed: true },
+      last: { path: [], dist: null },
+      best: { path: [], dist: null }
+    };
+
+    let optimalSolution = { path: [], dist: 0 }; // Brute force calculation target
+    let isOptimumRevealed = false; // Track optimal route visibility toggle
+
+    // Grid details
+    const GRID_SIZE = 10;
+    const SVG_PX_SIZE = 500;
+
+    // --- DOM REFERENCES ---
+    const gridSvg = document.getElementById('grid-svg');
+    const svgMeshContainer = document.getElementById('svg-mesh-container');
+    const svgActiveRoute = document.getElementById('svg-active-route');
+    const svgOptimalRoute = document.getElementById('svg-optimal-route');
+    const svgNodesContainer = document.getElementById('svg-nodes-container');
+    const svgDistanceTooltip = document.getElementById('svg-distance-tooltip');
+    const svgTooltipText = document.getElementById('svg-tooltip-text');
+
+    const stopsValue = document.getElementById('stops-value');
+    const btnDecStops = document.getElementById('btn-dec-stops');
+    const btnIncStops = document.getElementById('btn-inc-stops');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnTryImprove = document.getElementById('btn-try-improve');
+    const btnStartSetup = document.getElementById('btn-start-setup');
+
+    const scoreboardCard = document.getElementById('scoreboard-card');
+    const onboardingViewport = document.getElementById('onboarding-viewport');
+    const renderViewport = document.getElementById('render-viewport');
+    const instructionsHud = document.getElementById('instructions-hud');
+    const activeButtonsGroup = document.getElementById('active-buttons-group');
+    const setupButtonsGroup = document.getElementById('setup-buttons-group');
+    const onMapProgressHud = document.getElementById('onmap-progress-hud');
+    const hudPathSequence = document.getElementById('hud-path-sequence');
+    const hudCumulativeDistance = document.getElementById('hud-cumulative-distance');
+    const hudStopCounter = document.getElementById('hud-stop-counter');
+    
+    const scoreCurrentDist = document.getElementById('score-current-dist');
+    const scoreCurrentPath = document.getElementById('score-current-path');
+    const scoreLastDist = document.getElementById('score-last-dist');
+    const scoreLastPath = document.getElementById('score-last-path');
+    const scoreBestDist = document.getElementById('score-best-dist');
+    const scoreBestPath = document.getElementById('score-best-path');
+    const scoreOptimalDist = document.getElementById('score-optimal-dist');
+    const scoreOptimalPath = document.getElementById('score-optimal-path');
+    const btnRevealOptimal = document.getElementById('btn-reveal-optimal');
+
+    const gradingPercentage = document.getElementById('grading-percentage');
+    const gradingBar = document.getElementById('grading-bar');
+    const gradingFeedback = document.getElementById('grading-feedback');
+    const matrixInstructionText = document.getElementById('matrix-instruction-text');
+    const currentStatusBadge = document.getElementById('current-status-badge');
+
+    const btnTutorial = document.getElementById('btn-tutorial');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+    const tutorialModal = document.getElementById('tutorial-modal');
+
+    // --- Math Formulas & Coordinate Mapping ---
+
+    // Translate 0-10 Math Coordinates to SVG Viewbox space
+    function mathToSvg(mathX, mathY) {
+      const x = (mathX / GRID_SIZE) * SVG_PX_SIZE;
+      const y = ((GRID_SIZE - mathY) / GRID_SIZE) * SVG_PX_SIZE;
+      return { x, y };
+    }
+
+    // Pythagoras distance formula
+    function calculateDistance(node1, node2) {
+      return Math.hypot(node1.x - node2.x, node1.y - node2.y);
+    }
+
+    // Helper to calculate total distance of a path sequence of node indices
+    function calculatePathDistance(pathIndices) {
+      if (pathIndices.length < 2) return 0;
+      let total = 0;
+      for (let i = 0; i < pathIndices.length - 1; i++) {
+        total += calculateDistance(gameNodes[pathIndices[i]], gameNodes[pathIndices[i+1]]);
+      }
+      return total;
+    }
+
+    // Generate unique random integer coordinates (ensuring no repeated X or Y across nodes to avoid overlapping lines)
+    function generateUniqueStopCoordinates(count) {
+      let xPool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      let yPool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      
+      // Shuffle pools using modern Fisher-Yates approach
+      for (let i = xPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [xPool[i], xPool[j]] = [xPool[j], xPool[i]];
+      }
+      for (let i = yPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [yPool[i], yPool[j]] = [yPool[j], yPool[i]];
+      }
+      
+      let coords = [];
+      for (let i = 0; i < count; i++) {
+        let x = xPool[i];
+        let y = yPool[i];
+        
+        // Avoid placing node on Home (5,5)
+        if (x === 5 && y === 5) {
+          // Swap with an unused coordinate in the pool
+          let swapIdx = count;
+          while (swapIdx < xPool.length && xPool[swapIdx] === 5) {
+            swapIdx++;
+          }
+          if (swapIdx < xPool.length) {
+            x = xPool[swapIdx];
+            // Swap to maintain absolute uniqueness in the pool
+            let temp = xPool[i];
+            xPool[i] = xPool[swapIdx];
+            xPool[swapIdx] = temp;
+          }
+        }
+        coords.push({ x, y });
+      }
+      return coords;
+    }
+
+    // Brute force optimal solution (Lightweight permutation for N <= 6)
+    function solveBruteForceTSP() {
+      const stopIndices = Array.from({ length: totalStops }, (_, i) => i + 1); // [1, 2, ..., N]
+      let shortestDist = Infinity;
+      let bestSequence = [];
+
+      // Recursive permutation generator
+      function permute(arr, memo = []) {
+        if (arr.length === 0) {
+          // Construct full tour loop: Home -> Permutation -> Home
+          const candidateTour = [0, ...memo, 0];
+          const dist = calculatePathDistance(candidateTour);
+          if (dist < shortestDist) {
+            shortestDist = dist;
+            bestSequence = candidateTour;
+          }
+        } else {
+          for (let i = 0; i < arr.length; i++) {
+            let curr = arr.slice();
+            let next = curr.splice(i, 1);
+            permute(curr.slice(), memo.concat(next));
+          }
+        }
+      }
+
+      permute(stopIndices);
+      return { path: bestSequence, dist: shortestDist };
+    }
+
+    // Translate indices array to string path representation
+    function getPathString(indices) {
+      if (!indices || indices.length === 0) return '---';
+      return indices.map(idx => gameNodes[idx].label).join(' → ');
+    }
+
+    // Build the fully connected background graph mesh of potential lines
+    function drawMesh() {
+      svgMeshContainer.innerHTML = '';
+      
+      // Loop through all nodes to draw every connection (edges)
+      for (let i = 0; i < gameNodes.length; i++) {
+        for (let j = i + 1; j < gameNodes.length; j++) {
+          const nodeA = gameNodes[i];
+          const nodeB = gameNodes[j];
+          const posA = mathToSvg(nodeA.x, nodeA.y);
+          const posB = mathToSvg(nodeB.x, nodeB.y);
+
+          const distance = calculateDistance(nodeA, nodeB).toFixed(2);
+
+          // Group to hold dynamic events
+          const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+          // Visible dull dotted route segment line
+          const visualLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          visualLine.setAttribute('x1', posA.x);
+          visualLine.setAttribute('y1', posA.y);
+          visualLine.setAttribute('x2', posB.x);
+          visualLine.setAttribute('y2', posB.y);
+          visualLine.setAttribute('stroke', '#334155');
+          visualLine.setAttribute('stroke-width', '1.5');
+          visualLine.setAttribute('stroke-opacity', '0.6');
+          visualLine.setAttribute('stroke-dasharray', '4,4');
+          visualLine.setAttribute('class', 'transition-all duration-150');
+
+          // Thick invisible hit-target line for easier cursor/touch hover
+          const triggerLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          triggerLine.setAttribute('x1', posA.x);
+          triggerLine.setAttribute('y1', posA.y);
+          triggerLine.setAttribute('x2', posB.x);
+          triggerLine.setAttribute('y2', posB.y);
+          triggerLine.setAttribute('stroke', 'transparent');
+          triggerLine.setAttribute('stroke-width', '12');
+          triggerLine.setAttribute('class', 'cursor-pointer');
+
+          // Hover behaviors to display calculations
+          const onHoverEnter = () => {
+            visualLine.setAttribute('stroke', '#10b981'); // Emerald highlight
+            visualLine.setAttribute('stroke-width', '3');
+            visualLine.setAttribute('stroke-opacity', '1.0');
+            visualLine.removeAttribute('stroke-dasharray');
+
+            // Set and show SVG Floating Tooltip
+            const midX = (posA.x + posB.x) / 2;
+            const midY = (posA.y + posB.y) / 2;
+            svgTooltipText.textContent = `${distance} units`;
+            svgDistanceTooltip.setAttribute('transform', `translate(${midX}, ${midY})`);
+            svgDistanceTooltip.classList.remove('opacity-0');
+          };
+
+          const onHoverLeave = () => {
+            visualLine.setAttribute('stroke', '#334155');
+            visualLine.setAttribute('stroke-width', '1.5');
+            visualLine.setAttribute('stroke-opacity', '0.6');
+            visualLine.setAttribute('stroke-dasharray', '4,4');
+            svgDistanceTooltip.classList.add('opacity-0');
+          };
+
+          triggerLine.addEventListener('mouseenter', onHoverEnter);
+          triggerLine.addEventListener('mouseleave', onHoverLeave);
+
+          edgeGroup.appendChild(visualLine);
+          edgeGroup.appendChild(triggerLine);
+          svgMeshContainer.appendChild(edgeGroup);
+        }
+      }
+    }
+
+    // Render nodes visually on the SVG grid layout
+    function renderNodes() {
+      svgNodesContainer.innerHTML = '';
+
+      gameNodes.forEach((node, index) => {
+        const pos = mathToSvg(node.x, node.y);
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+        
+        let isHome = index === 0;
+        let isVisited = activeSelection.includes(index);
+        let allStopsVisited = gameNodes.every((_, nodeIdx) => activeSelection.includes(nodeIdx));
+
+        // Determine if this specific node is currently disabled/unclickable
+        let isClickable = false;
+        let disabledClass = '';
+        
+        if (isManualRunActive) {
+          if (isHome) {
+            // Home is only clickable to CONCLUDE the path if all stops have been visited
+            if (allStopsVisited && activeSelection[activeSelection.length - 1] !== 0) {
+              isClickable = true;
+            }
+          } else {
+            // Destinations are clickable if they haven't been visited yet
+            if (!isVisited) {
+              isClickable = true;
+            }
+          }
+        }
+
+        if (isManualRunActive && !isClickable) {
+          disabledClass = ' node-disabled opacity-40';
+        }
+
+        group.setAttribute('class', 'node-clickable' + disabledClass);
+
+        let coreElement;
+        if (isHome) {
+          // Home visual styling
+          coreElement = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          coreElement.setAttribute('x', '-14');
+          coreElement.setAttribute('y', '-14');
+          coreElement.setAttribute('width', '28');
+          coreElement.setAttribute('height', '28');
+          coreElement.setAttribute('rx', '8');
+          
+          // Use green for available finish, amber/slate when waiting
+          if (isManualRunActive && allStopsVisited && activeSelection[activeSelection.length-1] !== 0) {
+            coreElement.setAttribute('fill', '#059669'); // Solid Green
+            coreElement.setAttribute('stroke', '#34d399');
+          } else {
+            coreElement.setAttribute('fill', '#1e293b'); // Dark Slate default
+            coreElement.setAttribute('stroke', '#059669');
+          }
+          coreElement.setAttribute('stroke-width', '2.5');
+          coreElement.setAttribute('filter', 'url(#shadow)');
+
+          // Tiny Home Symbol icon using FontAwesome unicodes inside SVG text
+          const homeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          homeIcon.setAttribute('font-family', '"Font Awesome 6 Free"');
+          homeIcon.setAttribute('font-weight', '900');
+          homeIcon.setAttribute('font-size', '12px');
+          homeIcon.setAttribute('fill', '#ffffff');
+          homeIcon.setAttribute('text-anchor', 'middle');
+          homeIcon.setAttribute('dominant-baseline', 'central');
+          homeIcon.setAttribute('pointer-events', 'none'); // Fix flickering
+          homeIcon.textContent = '\uf015'; // Home icon code
+          group.appendChild(coreElement);
+          group.appendChild(homeIcon);
+        } else {
+          // Standard destination stops
+          coreElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          coreElement.setAttribute('cx', '0');
+          coreElement.setAttribute('cy', '0');
+          coreElement.setAttribute('r', '13');
+          
+          if (isVisited) {
+            coreElement.setAttribute('fill', '#042f2e'); // Deep teal for completed
+            coreElement.setAttribute('stroke', '#14b8a6'); // Teal accent
+          } else {
+            coreElement.setAttribute('fill', '#0f172a'); // Slate dark
+            coreElement.setAttribute('stroke', '#cbd5e1'); // White/grey border
+          }
+          coreElement.setAttribute('stroke-width', '2.5');
+          coreElement.setAttribute('filter', 'url(#shadow)');
+
+          const letterText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          letterText.setAttribute('font-family', 'sans-serif');
+          letterText.setAttribute('font-weight', 'bold');
+          letterText.setAttribute('font-size', '11px');
+          letterText.setAttribute('fill', isVisited ? '#14b8a6' : '#f1f5f9');
+          letterText.setAttribute('text-anchor', 'middle');
+          letterText.setAttribute('dominant-baseline', 'central');
+          letterText.setAttribute('pointer-events', 'none'); // Fix flickering
+          letterText.textContent = node.label;
+
+          group.appendChild(coreElement);
+          group.appendChild(letterText);
+        }
+
+        // Add numerical coordinate label bubble above stop
+        const coordsText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        coordsText.setAttribute('font-family', 'monospace');
+        coordsText.setAttribute('font-size', '9px');
+        coordsText.setAttribute('fill', '#94a3b8');
+        coordsText.setAttribute('x', '0');
+        coordsText.setAttribute('y', '-22');
+        coordsText.setAttribute('text-anchor', 'middle');
+        coordsText.setAttribute('pointer-events', 'none'); // Fix flickering
+        coordsText.textContent = `(${node.x},${node.y})`;
+        group.appendChild(coordsText);
+
+        // Interaction Clicking behavior for active routing manual runs
+        group.addEventListener('click', () => {
+          if (isClickable) {
+            handleNodeClick(index);
+          }
+        });
+
+        svgNodesContainer.appendChild(group);
+      });
+    }
+
+    // Render active selection path inside SVG
+    function drawActivePath() {
+      if (activeSelection.length === 0) {
+        svgActiveRoute.setAttribute('d', '');
+        return;
+      }
+
+      let dString = '';
+      activeSelection.forEach((nodeIdx, stepIdx) => {
+        const pos = mathToSvg(gameNodes[nodeIdx].x, gameNodes[nodeIdx].y);
+        if (stepIdx === 0) {
+          dString += `M ${pos.x} ${pos.y}`;
+        } else {
+          dString += ` L ${pos.x} ${pos.y}`;
+        }
+      });
+
+      svgActiveRoute.setAttribute('d', dString);
+      
+      // Dynamic route glow effects depending on completion
+      if (activeSelection.length > 1 && activeSelection[activeSelection.length-1] === 0) {
+        svgActiveRoute.setAttribute('stroke', '#10b981'); // Completed: Beautiful Emerald Green
+      } else {
+        svgActiveRoute.setAttribute('stroke', '#f59e0b'); // Progressing: Warm Amber Alert
+      }
+    }
+
+    // Renders the glowing optimal path on the SVG grid
+    function drawOptimalPath() {
+      if (!optimalSolution.path || optimalSolution.path.length === 0) {
+        svgOptimalRoute.setAttribute('d', '');
+        return;
+      }
+
+      let dString = '';
+      optimalSolution.path.forEach((nodeIdx, stepIdx) => {
+        const pos = mathToSvg(gameNodes[nodeIdx].x, gameNodes[nodeIdx].y);
+        if (stepIdx === 0) {
+          dString += `M ${pos.x} ${pos.y}`;
+        } else {
+          dString += ` L ${pos.x} ${pos.y}`;
+        }
+      });
+
+      svgOptimalRoute.setAttribute('d', dString);
+    }
+
+    // Hide or Reveal optimal solution line & dashboard parameters
+    function toggleOptimalReveal() {
+      isOptimumRevealed = !isOptimumRevealed;
+      
+      if (isOptimumRevealed) {
+        btnRevealOptimal.innerHTML = '<i class="fa-solid fa-eye-slash text-xs"></i> Hide Optimal Route';
+        btnRevealOptimal.className = "w-full py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] font-bold text-slate-300 transition duration-150 flex items-center justify-center gap-1";
+        
+        scoreOptimalDist.textContent = optimalSolution.dist.toFixed(2);
+        scoreOptimalPath.textContent = `Path: ${getPathString(optimalSolution.path)}`;
+        svgOptimalRoute.classList.remove('opacity-0');
+      } else {
+        btnRevealOptimal.innerHTML = '<i class="fa-solid fa-eye text-xs"></i> Reveal Optimal Route';
+        btnRevealOptimal.className = "w-full py-1.5 bg-blue-900/50 hover:bg-blue-800/70 border border-blue-700/50 rounded-lg text-[10px] font-bold text-blue-300 transition duration-150 flex items-center justify-center gap-1";
+        
+        scoreOptimalDist.innerHTML = '<i class="fa-solid fa-lock text-xs mr-1 text-blue-500"></i> Locked';
+        scoreOptimalPath.textContent = 'Path: Click "Reveal" below to calculate absolute minimum.';
+        svgOptimalRoute.classList.add('opacity-0');
+      }
+    }
+
+    // --- Setup Screen Onboarding Flow ---
+
+    // Transition from Setup screen to Active Sandbox Map
+    function finishSetupAndGenerateMap() {
+      isMapGenerated = true;
+      isOptimumRevealed = false;
+
+      // Swap views
+      onboardingViewport.classList.add('hidden');
+      setupButtonsGroup.classList.add('hidden');
+
+      renderViewport.classList.remove('hidden');
+      scoreboardCard.classList.remove('hidden');
+      instructionsHud.classList.remove('hidden');
+      activeButtonsGroup.classList.remove('hidden');
+
+      generateNewMap();
+    }
+
+    // Generate new random node scenario
+    function generateNewMap() {
+      gameNodes = [];
+      activeSelection = [];
+      isManualRunActive = false;
+      onMapProgressHud.classList.add('hidden');
+
+      // Clear optimal visibility toggles
+      isOptimumRevealed = true;
+      toggleOptimalReveal(); // sets to hidden locked defaults
+
+      // Reset stops layout HUD labels
+      stopsValue.textContent = totalStops;
+      document.getElementById('current-stop-label').textContent = `${totalStops} Active Stops`;
+
+      // 1. Add Home Node at index 0
+      gameNodes.push({ label: 'Home', x: 5, y: 5 });
+
+      // 2. Generate unique random stops and assign alphabetical markers
+      const coords = generateUniqueStopCoordinates(totalStops);
+      coords.forEach((coord, i) => {
+        const label = String.fromCharCode(65 + i); // A, B, C, D, E, F...
+        gameNodes.push({ label, x: coord.x, y: coord.y });
+      });
+
+      // 3. Solve for mathematical optimal TSP path using brute force
+      const optimal = solveBruteForceTSP();
+      optimalSolution = optimal;
+
+      // 4. Start with a default chronological order sequence: Home -> A -> B -> C -> Home
+      const defaultSequence = [0];
+      for (let i = 1; i <= totalStops; i++) {
+        defaultSequence.push(i);
+      }
+      defaultSequence.push(0); // Connect back to Home
+
+      const defaultDist = calculatePathDistance(defaultSequence);
+      attempts.current = { path: defaultSequence, dist: defaultDist, completed: true };
+
+      attempts.last = { path: [], dist: null };
+      attempts.best = { path: defaultSequence, dist: defaultDist };
+
+      // Update scoreboard views immediately on load (pre-populated default path)
+      scoreCurrentDist.textContent = defaultDist.toFixed(2);
+      scoreCurrentPath.textContent = getPathString(defaultSequence);
+      currentStatusBadge.textContent = 'Completed';
+      currentStatusBadge.className = 'bg-emerald-900/45 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-mono';
+
+      scoreLastDist.textContent = '---';
+      scoreLastPath.textContent = 'No previous run';
+
+      scoreBestDist.textContent = defaultDist.toFixed(2);
+      scoreBestPath.textContent = getPathString(defaultSequence);
+
+      matrixInstructionText.textContent = 'Analyze paths. Click "Try to Improve" to draw your own custom route.';
+
+      // 5. Build layout
+      drawMesh();
+      activeSelection = [...defaultSequence];
+      renderNodes();
+      drawOptimalPath();
+      drawActivePath();
+      updateAccuracyGrade();
+    }
+
+    // --- User Trip Construction & Node Clicks ---
+
+    // Clicking a node during an active custom route attempt
+    function handleNodeClick(index) {
+      if (!isManualRunActive) return;
+
+      const nodeLabel = gameNodes[index].label;
+
+      // 1. Check if starting a new path (activeSelection empty means we start at Home index 0)
+      if (activeSelection.length === 0) {
+        if (index === 0) {
+          activeSelection.push(0);
+          drawActivePath();
+          updateLiveProgressHUD();
+          renderNodes(); // Refresh disable styling
+        }
+        return;
+      }
+
+      // Prevent duplicate consecutive clicks
+      const lastSelectedIndex = activeSelection[activeSelection.length - 1];
+      if (lastSelectedIndex === index) return;
+
+      // 2. Handle closing the loop (clicking Home)
+      if (index === 0) {
+        const allStopsVisited = gameNodes.every((_, nodeIdx) => activeSelection.includes(nodeIdx));
+        if (allStopsVisited) {
+          activeSelection.push(0);
+          drawActivePath();
+          concludeManualTrip();
+        }
+        return;
+      }
+
+      // 3. Handle standard destination node clicks
+      // Ignore clicks on already visited nodes
+      if (activeSelection.includes(index)) {
+        return;
+      }
+
+      // Append node to active route path
+      activeSelection.push(index);
+      drawActivePath();
+      updateLiveProgressHUD();
+      renderNodes(); // Re-render nodes to disable clicked nodes immediately
+    }
+
+    // Updates the live floating HUD on the map canvas
+    function updateLiveProgressHUD() {
+      const runningDist = calculatePathDistance(activeSelection);
+      hudCumulativeDistance.textContent = runningDist.toFixed(2);
+      hudPathSequence.textContent = getPathString(activeSelection);
+      
+      const visitedCount = activeSelection.length;
+      // Excludes final double-counted return. Total unique stops is N nodes + 1 Home
+      const totalCount = gameNodes.length; 
+      hudStopCounter.textContent = `Stops: ${visitedCount}/${totalCount}`;
+    }
+
+    // Clicking "Try to Improve" clears path and begins custom selection
+    function startManualTripConfig() {
+      // 1. Shift completed current attempt parameters to "Last Attempt"
+      if (attempts.current.completed && attempts.current.path.length > 0) {
+        attempts.last = { ...attempts.current };
+        scoreLastDist.textContent = attempts.last.dist.toFixed(2);
+        scoreLastPath.textContent = getPathString(attempts.last.path);
+      }
+
+      // 2. Reset active builder selection to starting Home point
+      isManualRunActive = true;
+      activeSelection = [0]; // starts at Home
+      
+      attempts.current = { path: [], dist: 0, completed: false };
+
+      // Keep sidebar showing "InProgress" state (do not show live scores yet)
+      scoreCurrentDist.textContent = '---';
+      scoreCurrentPath.textContent = 'Home (In Progress...)';
+      currentStatusBadge.textContent = 'InProgress';
+      currentStatusBadge.className = 'bg-amber-900/40 text-amber-300 px-2 py-0.5 rounded text-[9px] font-mono';
+
+      matrixInstructionText.innerHTML = 'Trip started! Click next unvisited node stop to draw your path.';
+
+      // Activate and update Floating Map Progress HUD
+      onMapProgressHud.classList.remove('hidden');
+      updateLiveProgressHUD();
+
+      drawActivePath();
+      renderNodes();
+      updateAccuracyGrade();
+    }
+
+    // Successfully closes the routing loop back at Home
+    function concludeManualTrip() {
+      isManualRunActive = false;
+      onMapProgressHud.classList.add('hidden'); // Hide progress HUD now that it's complete
+
+      const finalDist = calculatePathDistance(activeSelection);
+
+      attempts.current = {
+        path: [...activeSelection],
+        dist: finalDist,
+        completed: true
+      };
+
+      // Updates Current Displays on the sidebar scoreboard card (ONLY ON COMPLETE)
+      scoreCurrentDist.textContent = finalDist.toFixed(2);
+      scoreCurrentPath.textContent = getPathString(activeSelection);
+      currentStatusBadge.textContent = 'Completed';
+      currentStatusBadge.className = 'bg-emerald-900/45 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-mono';
+
+      // Evaluate and update Personal Best
+      if (attempts.best.dist === null || finalDist < attempts.best.dist) {
+        attempts.best = { ...attempts.current };
+        scoreBestDist.textContent = finalDist.toFixed(2);
+        scoreBestPath.textContent = getPathString(activeSelection);
+      }
+
+      matrixInstructionText.innerHTML = '<span class="text-emerald-400 font-bold">🎉 Tour concluded successfully!</span> Check your score & try again to improve efficiency.';
+      
+      renderNodes(); // Refresh clickable styles
+      updateAccuracyGrade();
+    }
+
+    // Evaluate route efficiency grade
+    function updateAccuracyGrade() {
+      const currentDist = calculatePathDistance(activeSelection);
+      const optimalDist = optimalSolution.dist;
+
+      if (!attempts.current.completed || activeSelection.length < gameNodes.length + 1) {
+        gradingPercentage.textContent = '0%';
+        gradingBar.style.width = '0%';
+        gradingFeedback.textContent = 'Complete your manual route to calculate accuracy!';
+        return;
+      }
+
+      // Distance efficiency calculation
+      let efficiency = (optimalDist / currentDist) * 100;
+      efficiency = Math.max(0, Math.min(100, efficiency));
+
+      gradingPercentage.textContent = `${efficiency.toFixed(1)}%`;
+      gradingBar.style.width = `${efficiency}%`;
+
+      // Comments based on efficiency performance
+      if (efficiency >= 99.9) {
+        gradingBar.className = "bg-emerald-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-emerald-400 font-extrabold'>100% PERFECT OPTIMUM!</span> You discovered the absolute shortest Traveling Salesperson route!`;
+      } else if (efficiency >= 95) {
+        gradingBar.className = "bg-teal-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-teal-400 font-bold'>Excellent Route!</span> Extremely efficient path choice. Try to find the exact local minimum.`;
+      } else if (efficiency >= 85) {
+        gradingBar.className = "bg-sky-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-sky-400 font-semibold'>Good Attempt.</span> There are still shorter crossing combinations on the grid.`;
+      } else {
+        gradingBar.className = "bg-rose-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-rose-400'>Suboptimal.</span> Look closely at the Euclidean edge lengths and avoid crossing back and forth.`;
+      }
+    }
+
+    // --- Event Listeners ---
+
+    // Stops Increments & Decrements (bounded 2 to 6)
+    btnDecStops.addEventListener('click', () => {
+      if (totalStops > 2) {
+        totalStops--;
+        stopsValue.textContent = totalStops;
+        if (isMapGenerated) {
+          generateNewMap();
+        }
+      }
+    });
+
+    btnIncStops.addEventListener('click', () => {
+      if (totalStops < 6) {
+        totalStops++;
+        stopsValue.textContent = totalStops;
+        if (isMapGenerated) {
+          generateNewMap();
+        }
+      }
+    });
+
+    // Start-setup sequence button
+    btnStartSetup.addEventListener('click', finishSetupAndGenerateMap);
+
+    btnGenerate.addEventListener('click', generateNewMap);
+    btnTryImprove.addEventListener('click', startManualTripConfig);
+    btnRevealOptimal.addEventListener('click', toggleOptimalReveal);
+
+    // Modal Operations
+    const toggleModal = () => tutorialModal.classList.toggle('hidden');
+    btnTutorial.addEventListener('click', toggleModal);
+    btnCloseModal.addEventListener('click', toggleModal);
+    btnCloseModalFooter.addEventListener('click', toggleModal);
+    tutorialModal.addEventListener('click', (e) => {
+      if (e.target === tutorialModal) toggleModal();
+    });
+
+  </script>
+</body>
+</html>
