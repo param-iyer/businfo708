@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Box Optimizer 2D/3D: Calculus Lab</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Three.js for 3D physics rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- MathJax for rendering calculus formulas -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 shadow-md shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-amber-600 rounded-xl text-white shadow-lg shadow-amber-500/20">
+          <i class="fa-solid fa-box-open text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">Box Volume Optimizer</h1>
+          <p class="text-xs text-slate-400">Cardboard Optimization & Folding Simulator</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-tutorial" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition duration-150 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap"></i> Interactive Calculus Proof
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    
+    <!-- Left Column: Scoreboard at top, unified controls below -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+
+      <!-- Scoreboard Card (Priority #1 at Top) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <h2 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center justify-between">
+          <span><i class="fa-solid fa-trophy text-amber-500 mr-1.5"></i> Optimization Scoreboard</span>
+          <span class="text-[10px] text-slate-500 normal-case" id="current-sheet-label">(Sheet: 12" × 12")</span>
+        </h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Retained Water HUD -->
+          <div class="p-3 bg-blue-950/40 border border-blue-900/40 rounded-xl flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">Retained Water Volume</span>
+            <span class="text-2xl font-black font-mono text-white mt-1" id="stat-water">0.00</span>
+            <span class="text-[9px] text-slate-400 mt-0.5">cubic inches (Score)</span>
+          </div>
+          <!-- Nominal Volume HUD -->
+          <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nominal Box Volume</span>
+            <span class="text-xl font-bold font-mono text-slate-300 mt-1" id="stat-nominal">0.00</span>
+            <span class="text-[9px] text-slate-500 mt-0.5">volume before leakages</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-xs bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
+          <div>
+            <span class="text-slate-400 block">Current Base Size:</span>
+            <span id="label-base-dims" class="font-semibold font-mono text-slate-300">12.00" × 12.00"</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block">Box Max Height:</span>
+            <span id="label-box-height" class="font-semibold font-mono text-slate-300">0.00"</span>
+          </div>
+        </div>
+
+        <!-- Progress Tracker and Continuous Optimum Comparisons -->
+        <div class="space-y-1">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400 font-medium">Efficiency vs. Continuous Optimum</span>
+            <span id="grading-percentage" class="font-mono font-bold text-amber-400">0%</span>
+          </div>
+          <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div id="grading-bar" class="bg-amber-500 h-full w-[0%] transition-all duration-500"></div>
+          </div>
+          <p id="grading-feedback" class="text-xs text-slate-400 italic pt-1 leading-normal">
+            Adjust the corner sliders to configure your box, then hit Fold & Fill!
+          </p>
+        </div>
+
+        <hr class="border-slate-800">
+
+        <!-- History Records -->
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between items-center py-1 bg-slate-950/20 px-2.5 rounded border border-slate-800">
+            <span class="text-slate-400">Last Trial Retained:</span>
+            <span id="history-last" class="font-mono text-slate-300">No trials yet</span>
+          </div>
+          <div class="flex justify-between items-center py-1 bg-slate-950/20 px-2.5 rounded border border-slate-800">
+            <span class="text-emerald-400 font-medium">Personal Best (Retained):</span>
+            <span id="history-best" class="font-mono text-emerald-400 font-semibold">---</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unified Sheet Size & Corner Cut Configurator Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-grow flex flex-col justify-between gap-5">
+        <div class="space-y-5">
+          
+          <!-- Section 1: Sheet Dimensions -->
+          <div class="space-y-3">
+            <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center gap-2 border-b border-slate-800 pb-1.5">
+              <i class="fa-solid fa-up-right-and-down-left-from-center text-amber-500"></i> 1. Cardboard Sheet Size
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1 font-medium">Sheet Width (W):</label>
+                <div class="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                  <input type="number" id="sheet-w-input" min="6" max="24" value="12" class="w-full bg-transparent text-center font-bold text-amber-400 font-mono focus:outline-none">
+                  <span class="text-xs text-slate-500 pr-1">inches</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1 font-medium">Sheet Length (L):</label>
+                <div class="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                  <input type="number" id="sheet-l-input" min="6" max="24" value="12" class="w-full bg-transparent text-center font-bold text-amber-400 font-mono focus:outline-none">
+                  <span class="text-xs text-slate-500 pr-1">inches</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Corner Cuts & Symmetry Toggle -->
+          <div class="space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+              <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center gap-2">
+                <i class="fa-solid fa-scissors text-indigo-400"></i> 2. Corner Cut Sizes
+              </h3>
+              
+              <!-- Styled Toggle Switch for Symmetry -->
+              <label class="inline-flex items-center cursor-pointer gap-2 select-none">
+                <span class="text-[11px] text-slate-400 font-bold uppercase">Symmetric</span>
+                <div class="relative">
+                  <input type="checkbox" id="toggle-symmetric" class="sr-only peer" checked>
+                  <div class="w-9 h-5 bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-indigo-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-950 peer-checked:after:bg-indigo-400"></div>
+                </div>
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <!-- Top-Left Corner (Sky Blue) -->
+              <div class="p-3 bg-slate-950/40 rounded-xl border border-slate-800 space-y-2.5">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-0.5">
+                  <span class="text-xs font-bold text-sky-400"><i class="fa-solid fa-arrow-up-left"></i> Top-Left Cut</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Width (X-Cut):</span>
+                    <span id="label-tl-w" class="font-mono font-bold text-sky-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-tl-w" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Height (Y-Cut):</span>
+                    <span id="label-tl-h" class="font-mono font-bold text-sky-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-tl-h" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                </div>
+              </div>
+
+              <!-- Top-Right Corner (Emerald Green) -->
+              <div class="p-3 bg-slate-950/40 rounded-xl border border-slate-800 space-y-2.5">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-0.5">
+                  <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-arrow-up-right"></i> Top-Right Cut</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Width (X-Cut):</span>
+                    <span id="label-tr-w" class="font-mono font-bold text-emerald-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-tr-w" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400">
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Height (Y-Cut):</span>
+                    <span id="label-tr-h" class="font-mono font-bold text-emerald-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-tr-h" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400">
+                </div>
+              </div>
+
+              <!-- Bottom-Left Corner (Purple) -->
+              <div class="p-3 bg-slate-950/40 rounded-xl border border-slate-800 space-y-2.5">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-0.5">
+                  <span class="text-xs font-bold text-purple-400"><i class="fa-solid fa-arrow-down-left"></i> Bottom-Left Cut</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Width (X-Cut):</span>
+                    <span id="label-bl-w" class="font-mono font-bold text-purple-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-bl-w" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400">
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Height (Y-Cut):</span>
+                    <span id="label-bl-h" class="font-mono font-bold text-purple-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-bl-h" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400">
+                </div>
+              </div>
+
+              <!-- Bottom-Right Corner (Pink) -->
+              <div class="p-3 bg-slate-950/40 rounded-xl border border-slate-800 space-y-2.5">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-0.5">
+                  <span class="text-xs font-bold text-fuchsia-400"><i class="fa-solid fa-arrow-down-right"></i> Bottom-Right Cut</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Width (X-Cut):</span>
+                    <span id="label-br-w" class="font-mono font-bold text-fuchsia-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-br-w" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-400">
+                </div>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400">Height (Y-Cut):</span>
+                    <span id="label-br-h" class="font-mono font-bold text-fuchsia-400">0.00"</span>
+                  </div>
+                  <input type="range" id="cut-br-h" min="0" max="5.75" step="0.25" value="0.00" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-400">
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="btn-animate" disabled class="w-full py-4 bg-slate-800 text-slate-500 font-black text-sm tracking-wide rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4 shrink-0 cursor-not-allowed">
+          <i class="fa-solid fa-ban"></i> ENTER CUT DIMENSIONS
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Interactive Flat layout first with 3D Fold Switch -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl flex flex-col h-full min-h-[500px]">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="viewport-title">
+              <i class="fa-solid fa-map text-amber-500"></i> Cardboard Flat Layout
+            </h2>
+            <p class="text-xs text-slate-400" id="viewport-subtitle">Analyze the dotted fold guidelines and crossed-out cut corners.</p>
+          </div>
+          <!-- View Modes -->
+          <div class="flex gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px] font-bold shrink-0">
+            <button id="view-flat" class="px-3.5 py-1.5 bg-amber-500 text-slate-950 rounded-md transition flex items-center gap-1.5">
+              <i class="fa-solid fa-map"></i> 2D Flat View
+            </button>
+            <button id="view-3d" class="px-3.5 py-1.5 text-slate-400 rounded-md hover:text-white transition flex items-center gap-1.5">
+              <i class="fa-solid fa-cube"></i> 3D Fold View
+            </button>
+          </div>
+        </div>
+
+        <!-- Layout Rendering Container -->
+        <div id="render-viewport" class="relative flex-grow bg-slate-950 border border-slate-850 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center">
+          
+          <!-- 2D SVG Flat Layout Container (Active by default) -->
+          <div id="flat-layout-container" class="w-full h-full p-4 flex items-center justify-center">
+            <svg id="flat-layout-svg" viewBox="0 0 500 500" class="w-full h-full max-w-[450px] max-h-[450px]">
+              <defs>
+                <!-- Shading pattern for discarded portions -->
+                <pattern id="cut-hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                  <line x1="0" y1="0" x2="0" y2="10" stroke="#f43f5e" stroke-width="1.5" />
+                  <line x1="0" y1="0" x2="10" y2="0" stroke="#f43f5e" stroke-width="1" stroke-opacity="0.3" />
+                </pattern>
+              </defs>
+              <!-- Outer Cardboard Sheet Bounds -->
+              <rect id="svg-sheet" x="25" y="25" width="450" height="450" fill="rgba(217, 119, 6, 0.04)" stroke="rgba(217, 119, 6, 0.2)" stroke-width="2" />
+              
+              <!-- Retained Cardboard Base Area -->
+              <rect id="svg-base" x="100" y="100" width="300" height="300" fill="rgba(217, 119, 6, 0.2)" stroke="#d97706" stroke-width="2.5" />
+
+              <!-- Fold Lines (Dotted) -->
+              <line id="svg-fold-left" x1="100" y1="25" x2="100" y2="475" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4" />
+              <line id="svg-fold-right" x1="400" y1="25" x2="400" y2="475" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4" />
+              <line id="svg-fold-top" x1="25" y1="100" x2="475" y2="100" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4" />
+              <line id="svg-fold-bottom" x1="25" y1="400" x2="475" y2="400" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4" />
+
+              <!-- Crossed out Corner Cut Rectangles -->
+              <rect id="svg-cut-tl" x="25" y="25" width="75" height="75" fill="url(#cut-hatch)" stroke="#ef4444" stroke-width="1" />
+              <rect id="svg-cut-tr" x="400" y="25" width="75" height="75" fill="url(#cut-hatch)" stroke="#ef4444" stroke-width="1" />
+              <rect id="svg-cut-bl" x="25" y="400" width="75" height="75" fill="url(#cut-hatch)" stroke="#ef4444" stroke-width="1" />
+              <rect id="svg-cut-br" x="400" y="400" width="75" height="75" fill="url(#cut-hatch)" stroke="#ef4444" stroke-width="1" />
+
+              <!-- Wall Fold Status Badges (Directly Inside SVG Canvas) -->
+              <g id="badge-top" transform="translate(250, 42)">
+                <rect x="-65" y="-10" width="130" height="20" rx="10" id="badge-bg-top" fill="#10b981" />
+                <text x="0" y="3" text-anchor="middle" id="badge-txt-top" fill="#ffffff" class="text-[9px] font-bold font-sans">Top Fold: OK</text>
+              </g>
+              <g id="badge-bottom" transform="translate(250, 458)">
+                <rect x="-65" y="-10" width="130" height="20" rx="10" id="badge-bg-bottom" fill="#10b981" />
+                <text x="0" y="3" text-anchor="middle" id="badge-txt-bottom" fill="#ffffff" class="text-[9px] font-bold font-sans">Bottom Fold: OK</text>
+              </g>
+              <g id="badge-left" transform="translate(42, 250) rotate(-90)">
+                <rect x="-65" y="-10" width="130" height="20" rx="10" id="badge-bg-left" fill="#10b981" />
+                <text x="0" y="3" text-anchor="middle" id="badge-txt-left" fill="#ffffff" class="text-[9px] font-bold font-sans">Left Fold: OK</text>
+              </g>
+              <g id="badge-right" transform="translate(458, 250) rotate(90)">
+                <rect x="-65" y="-10" width="130" height="20" rx="10" id="badge-bg-right" fill="#10b981" />
+                <text x="0" y="3" text-anchor="middle" id="badge-txt-right" fill="#ffffff" class="text-[9px] font-bold font-sans">Right Fold: OK</text>
+              </g>
+
+              <!-- Text labels for dimensional feedback inside SVG -->
+              <g class="text-[10px] font-bold font-mono fill-slate-400 select-none">
+                <!-- Outer limits -->
+                <text id="lbl-svg-width" x="250" y="20" text-anchor="middle">12.00" Wide</text>
+                <text id="lbl-svg-length" x="15" y="250" text-anchor="middle" transform="rotate(-90 15 250)">12.00" Long</text>
+                <!-- Base limits -->
+                <text id="lbl-svg-base-w" x="250" y="250" text-anchor="middle" fill="#f59e0b" class="text-xs">12.00" × 12.00" Base</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- 3D Canvas Container (Hidden by default, initialized dynamically) -->
+          <div id="three-canvas-container" class="absolute inset-0 hidden">
+            <!-- WebGL gets injected here -->
+          </div>
+
+          <div id="loading-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 hidden">
+            <i class="fa-solid fa-spinner animate-spin text-amber-500 text-3xl"></i>
+            <span class="text-xs text-slate-400">Constructing fold mechanics...</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mathematical Calculus Tutorial modal -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-850 p-5 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-500"></i> Open Box Calculus Optimization
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5 text-sm text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="text-white font-bold mb-1.5">The Dynamic Symmetric Problem</h4>
+          <p>
+            When we cut four identical square corners of size $x \times x$ from a cardboard sheet of dimensions $W \times L$, the resulting folded box has dimensions:
+          </p>
+          <ul class="list-disc list-inside space-y-1 pl-2 text-xs text-slate-400 mt-1">
+            <li><strong>Height:</strong> $x$</li>
+            <li><strong>Width of base:</strong> $W - 2x$</li>
+            <li><strong>Length of base:</strong> $L - 2x$</li>
+          </ul>
+          <p class="mt-2">
+            The volume function to optimize is:
+          </p>
+          <div class="bg-slate-950 p-3.5 rounded-xl text-center font-mono text-amber-400 border border-slate-850 my-2 text-base">
+            $$V(x) = x(W - 2x)(L - 2x) = 4x^3 - 2(W+L)x^2 + WLx$$
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Finding the Peak Using Derivatives</h4>
+          <p class="mb-2">
+            To locate the exact mathematical point of maximum volume, we find the first derivative $V'(x)$ and solve for $V'(x) = 0$:
+          </p>
+          <div class="bg-slate-950 p-4 rounded-xl font-mono text-xs text-amber-300 border border-slate-850 my-2 space-y-2">
+            <p>$$V'(x) = 12x^2 - 4(W+L)x + WL = 0$$</p>
+            <p>Using the quadratic formula to find the roots:</p>
+            <p>$$x = \frac{4(W+L) \pm \sqrt{16(W+L)^2 - 48WL}}{24}$$</p>
+          </div>
+          <div class="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4">
+            <h5 class="text-amber-400 font-bold mb-1">Your Selected Sheet Optimization Details</h5>
+            <div id="dynamic-calculus-details" class="text-xs space-y-1 text-slate-300">
+              <!-- Dynamically populated proofs based on custom dimensions -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-850 p-4 border-t border-slate-800 text-right">
+        <button id="btn-close-modal-footer" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg transition">
+          Start Optimizing!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-950 border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500 shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>&copy; 2026 Box Optimizer 2D/3D. Class lab tool for calculus & physics optimization.</p>
+      <div class="flex gap-4">
+        <span class="hover:text-slate-400 transition cursor-help"><i class="fa-solid fa-cube text-amber-500 mr-1"></i> Watertight Calculus Method</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --- APP & GAME STATE ---
+    let sheetSize = { w: 12, l: 12 };
+    const BASE_THICKNESS = 0.05; // Global base thickness configuration for seamless physical matching
+    
+    let cuts = {
+      tl: { w: 0.0, h: 0.0 },
+      tr: { w: 0.0, h: 0.0 },
+      bl: { w: 0.0, h: 0.0 },
+      br: { w: 0.0, h: 0.0 }
+    };
+
+    let session = {
+      currentWaterVol: 0,
+      currentNominalVol: 0,
+      lastWaterVol: null,
+      lastNominalVol: null,
+      lastDims: null,
+      bestWaterVol: null,
+      bestNominalVol: null,
+      bestDims: null
+    };
+
+    // Three.js Core Globals
+    let scene, camera, renderer;
+    let baseMesh, flapL, flapR, flapT, flapB;
+    let pivotL, pivotR, pivotT, pivotB;
+    let waterMesh;
+    let activeParticles = [];
+    
+    // Animation control
+    let isFolding = false;
+    let isFlatView = true; // Flat view is front and center by default
+    let foldAngle = 0; // 0 (flat) to Math.PI / 2 (folded)
+    let waterHeight = 0;
+    let watertightH = 0; 
+    let animationPhase = 'idle'; // 'idle', 'folding', 'filling', 'leaking'
+    let targetWaterHeight = 0;
+    let maxBaseHeight = 0;
+
+    // --- DOM REFERENCES ---
+    const sheetWInput = document.getElementById('sheet-w-input');
+    const sheetLInput = document.getElementById('sheet-l-input');
+
+    const toggleSymmetric = document.getElementById('toggle-symmetric');
+
+    const cutTLW = document.getElementById('cut-tl-w');
+    const cutTLH = document.getElementById('cut-tl-h');
+    const cutTRW = document.getElementById('cut-tr-w');
+    const cutTRH = document.getElementById('cut-tr-h');
+    const cutBLW = document.getElementById('cut-bl-w');
+    const cutBLH = document.getElementById('cut-bl-h');
+    const cutBRW = document.getElementById('cut-br-w');
+    const cutBRH = document.getElementById('cut-br-h');
+
+    const lblTLW = document.getElementById('label-tl-w');
+    const lblTLH = document.getElementById('label-tl-h');
+    const lblTRW = document.getElementById('label-tr-w');
+    const lblTRH = document.getElementById('label-tr-h');
+    const lblBLW = document.getElementById('label-bl-w');
+    const lblBLH = document.getElementById('label-bl-h');
+    const lblBRW = document.getElementById('label-br-w');
+    const lblBRH = document.getElementById('label-br-h');
+
+    const statWater = document.getElementById('stat-water');
+    const statNominal = document.getElementById('stat-nominal');
+    const labelBaseDims = document.getElementById('label-base-dims');
+    const labelBoxHeight = document.getElementById('label-box-height');
+    const currentSheetLabel = document.getElementById('current-sheet-label');
+
+    const gradingPercentage = document.getElementById('grading-percentage');
+    const gradingBar = document.getElementById('grading-bar');
+    const gradingFeedback = document.getElementById('grading-feedback');
+
+    const historyLast = document.getElementById('history-last');
+    const historyBest = document.getElementById('history-best');
+
+    const viewFlat = document.getElementById('view-flat');
+    const view3D = document.getElementById('view-3d');
+    const flatLayoutContainer = document.getElementById('flat-layout-container');
+    const threeCanvasContainer = document.getElementById('three-canvas-container');
+    const viewportTitle = document.getElementById('viewport-title');
+    const viewportSubtitle = document.getElementById('viewport-subtitle');
+
+    const btnAnimate = document.getElementById('btn-animate');
+    const btnTutorial = document.getElementById('btn-tutorial');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+    const tutorialModal = document.getElementById('tutorial-modal');
+    const dynamicCalculusDetails = document.getElementById('dynamic-calculus-details');
+
+    // Dynamic resize handler to ensure canvas never collapses or stretches incorrectly
+    function onWindowResize() {
+      if (!scene || !camera || !renderer) return;
+      const viewport = document.getElementById('render-viewport');
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    function validateAndUpdateLimits() {
+      // Get whole number dimensions from input
+      let sheetW = Math.max(6, Math.min(24, Math.floor(parseFloat(sheetWInput.value) || 12)));
+      let sheetL = Math.max(6, Math.min(24, Math.floor(parseFloat(sheetLInput.value) || 12)));
+      sheetWInput.value = sheetW;
+      sheetLInput.value = sheetL;
+      sheetSize.w = sheetW;
+      sheetSize.l = sheetL;
+
+      currentSheetLabel.textContent = `(Sheet: ${sheetW}" × ${sheetL}")`;
+
+      // Set max cut sizes dynamically to prevent overlapping cuts (max is half sheet dimension - 0.25 margin)
+      const maxCutW = (sheetW / 2) - 0.25;
+      const maxCutH = (sheetL / 2) - 0.25;
+
+      const slidersW = [cutTLW, cutTRW, cutBLW, cutBRW];
+      const slidersH = [cutTLH, cutTRH, cutBLH, cutBRH];
+
+      slidersW.forEach(slider => {
+        slider.max = maxCutW;
+        if (parseFloat(slider.value) > maxCutW) {
+          slider.value = maxCutW;
+        }
+      });
+
+      slidersH.forEach(slider => {
+        slider.max = maxCutH;
+        if (parseFloat(slider.value) > maxCutH) {
+          slider.value = maxCutH;
+        }
+      });
+
+      syncStateFromInputs();
+    }
+
+    function getContinuousOptimum(W, L) {
+      // Solve derivative formula: 12x^2 - 4(W+L)x + WL = 0
+      const a = 12;
+      const b = -4 * (W + L);
+      const c = W * L;
+      const root1 = (-b + Math.sqrt(b*b - 4*a*c)) / (2*a);
+      const root2 = (-b - Math.sqrt(b*b - 4*a*c)) / (2*a);
+      // Select appropriate root that fits in sheet boundary (must be less than min(W,L)/2)
+      const x_opt = Math.min(root1, root2);
+      const optVol = x_opt * (W - 2*x_opt) * (L - 2*x_opt);
+      return { x: x_opt, vol: optVol };
+    }
+
+    function applySymmetry(sourceSlider, isWidth) {
+      if (!toggleSymmetric.checked) return;
+      
+      const val = sourceSlider.value;
+      const sliders = isWidth ? [cutTLW, cutTRW, cutBLW, cutBRW, cutTLH, cutTRH, cutBLH, cutBRH] 
+                              : [cutTLH, cutTRH, cutBLH, cutBRH, cutTLW, cutTRW, cutBLW, cutBRW];
+
+      sliders.forEach(slider => {
+        // Clamp to its specific max limits
+        const maxVal = parseFloat(slider.max);
+        slider.value = Math.min(parseFloat(val), maxVal);
+      });
+    }
+
+    function syncStateFromInputs() {
+      // 1. Grab values from sliders
+      cuts.tl.w = parseFloat(cutTLW.value);
+      cuts.tl.h = parseFloat(cutTLH.value);
+      cuts.tr.w = parseFloat(cutTRW.value);
+      cuts.tr.h = parseFloat(cutTRH.value);
+      cuts.bl.w = parseFloat(cutBLW.value);
+      cuts.bl.h = parseFloat(cutBLH.value);
+      cuts.br.w = parseFloat(cutBRW.value);
+      cuts.br.h = parseFloat(cutBRH.value);
+
+      // 2. Update sliders text indicators
+      lblTLW.textContent = `${cuts.tl.w.toFixed(2)}"`;
+      lblTLH.textContent = `${cuts.tl.h.toFixed(2)}"`;
+      lblTRW.textContent = `${cuts.tr.w.toFixed(2)}"`;
+      lblTRH.textContent = `${cuts.tr.h.toFixed(2)}"`;
+      lblBLW.textContent = `${cuts.bl.w.toFixed(2)}"`;
+      lblBLH.textContent = `${cuts.bl.h.toFixed(2)}"`;
+      lblBRW.textContent = `${cuts.br.w.toFixed(2)}"`;
+      lblBRH.textContent = `${cuts.br.h.toFixed(2)}"`;
+
+      // 3. Compute base fold lines
+      // Fold lines are dictated by the maximum cut depth on each side
+      const foldL = Math.max(cuts.tl.w, cuts.bl.w);
+      const foldR = Math.max(cuts.tr.w, cuts.br.w);
+      const foldT = Math.max(cuts.tl.h, cuts.tr.h);
+      const foldB = Math.max(cuts.bl.h, cuts.br.h);
+
+      const baseW = Math.max(0, sheetSize.w - foldL - foldR);
+      const baseL = Math.max(0, sheetSize.l - foldT - foldB);
+      maxBaseHeight = Math.min(foldL, foldR, foldT, foldB);
+
+      // Evaluate fold correctness (equal cuts along matching fold axis)
+      const topFoldOK = (cuts.tl.h === cuts.tr.h);
+      const bottomFoldOK = (cuts.bl.h === cuts.br.h);
+      const leftFoldOK = (cuts.tl.w === cuts.bl.w);
+      const rightFoldOK = (cuts.tr.w === cuts.br.w);
+
+      const allEdgesOK = topFoldOK && bottomFoldOK && leftFoldOK && rightFoldOK;
+
+      // Determine cut validity (cannot fold or score if cuts are all 0)
+      const cutsExist = (cuts.tl.w > 0 || cuts.tl.h > 0 || cuts.tr.w > 0 || cuts.tr.h > 0 || cuts.bl.w > 0 || cuts.bl.h > 0 || cuts.br.w > 0 || cuts.br.h > 0);
+
+      updateFoldBadge('top', topFoldOK);
+      updateFoldBadge('bottom', bottomFoldOK);
+      updateFoldBadge('left', leftFoldOK);
+      updateFoldBadge('right', rightFoldOK);
+
+      // Update the 2D Layout SVG representation instantly
+      update2DLayoutSVG(foldL, foldR, foldT, foldB, baseW, baseL);
+
+      // Update dynamic calculations in the tutorial modal
+      updateDynamicTutorialText();
+
+      // Configure "Fold & Fill" Action button state dynamically
+      if (!cutsExist) {
+        btnAnimate.disabled = true;
+        btnAnimate.className = "w-full py-4 bg-slate-800 text-slate-500 font-black text-sm tracking-wide rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4 shrink-0 cursor-not-allowed";
+        btnAnimate.innerHTML = '<i class="fa-solid fa-ban"></i> ENTER CUT DIMENSIONS';
+      } else if (!allEdgesOK) {
+        btnAnimate.disabled = true;
+        btnAnimate.className = "w-full py-4 bg-rose-950/40 text-rose-400 border border-rose-900/40 font-black text-sm tracking-wide rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4 shrink-0 cursor-not-allowed";
+        btnAnimate.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> FIX MISALIGNED EDGES';
+      } else {
+        btnAnimate.disabled = false;
+        btnAnimate.className = "w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm tracking-wide rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4 shrink-0 cursor-pointer";
+        btnAnimate.innerHTML = '<i class="fa-solid fa-play"></i> FOLD & FILL OPEN BOX';
+      }
+
+      // Water height is simply bounded by the equal folded wall dimensions
+      watertightH = allEdgesOK ? Math.min(foldL, foldR, foldT, foldB) : 0;
+
+      session.currentNominalVol = baseW * baseL * maxBaseHeight;
+      session.currentWaterVol = baseW * baseL * watertightH;
+
+      labelBaseDims.textContent = `${baseW.toFixed(2)}" × ${baseL.toFixed(2)}"`;
+      labelBoxHeight.textContent = `${maxBaseHeight.toFixed(2)}"`;
+
+      // Update the 3D cardboard meshes if scene is initialized
+      if (scene) {
+        update3DCardboardLayout(foldL, foldR, foldT, foldB, baseW, baseL);
+      }
+    }
+
+    // Helper to dynamically color and write status on SVG interior badges
+    function updateFoldBadge(edge, isProper) {
+      const bg = document.getElementById(`badge-bg-${edge}`);
+      const txt = document.getElementById(`badge-txt-${edge}`);
+      if (!bg || !txt) return;
+
+      const edgeCapitalized = edge.charAt(0).toUpperCase() + edge.slice(1);
+
+      if (isProper) {
+        bg.setAttribute('fill', '#10b981'); // Emerald green
+        txt.textContent = `${edgeCapitalized} Fold: ✓ OK`;
+      } else {
+        bg.setAttribute('fill', '#ef4444'); // Vivid Red
+        txt.textContent = `${edgeCapitalized} Fold: ⚠️ Misaligned`;
+      }
+    }
+
+    function update2DLayoutSVG(foldL, foldR, foldT, foldB, baseW, baseL) {
+      const svgSheet = document.getElementById('svg-sheet');
+      const svgBase = document.getElementById('svg-base');
+
+      const svgFoldL = document.getElementById('svg-fold-left');
+      const svgFoldR = document.getElementById('svg-fold-right');
+      const svgFoldT = document.getElementById('svg-fold-top');
+      const svgFoldB = document.getElementById('svg-fold-bottom');
+
+      const svgCutTL = document.getElementById('svg-cut-tl');
+      const svgCutTR = document.getElementById('svg-cut-tr');
+      const svgCutBL = document.getElementById('svg-cut-bl');
+      const svgCutBR = document.getElementById('svg-cut-br');
+
+      const lblSvgWidth = document.getElementById('lbl-svg-width');
+      const lblSvgLength = document.getElementById('lbl-svg-length');
+      const lblSvgBaseW = document.getElementById('lbl-svg-base-w');
+
+      // Coordinate normalization inside 500x500 box
+      const scaleX = 400 / sheetSize.w;
+      const scaleY = 400 / sheetSize.l;
+      const originX = 50;
+      const originY = 50;
+
+      // Update outer sheet size representation
+      svgSheet.setAttribute('x', originX);
+      svgSheet.setAttribute('y', originY);
+      svgSheet.setAttribute('width', sheetSize.w * scaleX);
+      svgSheet.setAttribute('height', sheetSize.l * scaleY);
+
+      // Update base cardboard box region
+      const baseXCoord = originX + (foldL * scaleX);
+      const baseYCoord = originY + (foldT * scaleY);
+      const baseWScaled = baseW * scaleX;
+      const baseLScaled = baseL * scaleY;
+      
+      svgBase.setAttribute('x', baseXCoord);
+      svgBase.setAttribute('y', baseYCoord);
+      svgBase.setAttribute('width', Math.max(0, baseWScaled));
+      svgBase.setAttribute('height', Math.max(0, baseLScaled));
+
+      // Update dotted fold guidelines
+      svgFoldL.setAttribute('x1', baseXCoord);
+      svgFoldL.setAttribute('y1', originY);
+      svgFoldL.setAttribute('x2', baseXCoord);
+      svgFoldL.setAttribute('y2', originY + (sheetSize.l * scaleY));
+
+      svgFoldR.setAttribute('x1', originX + ((sheetSize.w - foldR) * scaleX));
+      svgFoldR.setAttribute('y1', originY);
+      svgFoldR.setAttribute('x2', originX + ((sheetSize.w - foldR) * scaleX));
+      svgFoldR.setAttribute('y2', originY + (sheetSize.l * scaleY));
+
+      svgFoldT.setAttribute('x1', originX);
+      svgFoldT.setAttribute('y1', baseYCoord);
+      svgFoldT.setAttribute('x2', originX + (sheetSize.w * scaleX));
+      svgFoldT.setAttribute('y2', baseYCoord);
+
+      svgFoldB.setAttribute('x1', originX);
+      svgFoldB.setAttribute('y1', originY + ((sheetSize.l - foldB) * scaleY));
+      svgFoldB.setAttribute('x2', originX + (sheetSize.w * scaleX));
+      svgFoldB.setAttribute('y2', originY + ((sheetSize.l - foldB) * scaleY));
+
+      // Update shaded cutout bounds for each corner
+      // Top Left Cut
+      svgCutTL.setAttribute('x', originX);
+      svgCutTL.setAttribute('y', originY);
+      svgCutTL.setAttribute('width', cuts.tl.w * scaleX);
+      svgCutTL.setAttribute('height', cuts.tl.h * scaleY);
+
+      // Top Right Cut
+      svgCutTR.setAttribute('x', originX + ((sheetSize.w - cuts.tr.w) * scaleX));
+      svgCutTR.setAttribute('y', originY);
+      svgCutTR.setAttribute('width', cuts.tr.w * scaleX);
+      svgCutTR.setAttribute('height', cuts.tr.h * scaleY);
+
+      // Bottom Left Cut
+      svgCutBL.setAttribute('x', originX);
+      svgCutBL.setAttribute('y', originY + ((sheetSize.l - cuts.bl.h) * scaleY));
+      svgCutBL.setAttribute('width', cuts.bl.w * scaleX);
+      svgCutBL.setAttribute('height', cuts.bl.h * scaleY);
+
+      // Bottom Right Cut
+      svgCutBR.setAttribute('x', originX + ((sheetSize.w - cuts.br.w) * scaleX));
+      svgCutBR.setAttribute('y', originY + ((sheetSize.l - cuts.br.h) * scaleY));
+      svgCutBR.setAttribute('width', cuts.br.w * scaleX);
+      svgCutBR.setAttribute('height', cuts.br.h * scaleY);
+
+      // Labels updating
+      lblSvgWidth.textContent = `${sheetSize.w}.00" Wide`;
+      lblSvgWidth.setAttribute('x', originX + (sheetSize.w * scaleX) / 2);
+      lblSvgWidth.setAttribute('y', originY - 15);
+
+      lblSvgLength.textContent = `${sheetSize.l}.00" Long`;
+      lblSvgLength.setAttribute('x', originX - 25);
+      lblSvgLength.setAttribute('y', originY + (sheetSize.l * scaleY) / 2);
+
+      lblSvgBaseW.textContent = `${baseW.toFixed(2)}" × ${baseL.toFixed(2)}" Base`;
+      lblSvgBaseW.setAttribute('x', baseXCoord + baseWScaled / 2);
+      lblSvgBaseW.setAttribute('y', baseYCoord + baseLScaled / 2);
+    }
+
+    function commitScoresOnFoldFill() {
+      const waterVol = session.currentWaterVol;
+      const nominalVol = session.currentNominalVol;
+
+      statWater.textContent = waterVol.toFixed(2);
+      statNominal.textContent = nominalVol.toFixed(2);
+
+      // Get optimal volume mathematically
+      const opt = getContinuousOptimum(sheetSize.w, sheetSize.l);
+
+      // Calculate efficiency ratio vs peak continuous maximum
+      let efficiency = (waterVol / opt.vol) * 100;
+      efficiency = Math.max(0, Math.min(100, efficiency));
+
+      gradingPercentage.textContent = `${efficiency.toFixed(1)}%`;
+      gradingBar.style.width = `${efficiency}%`;
+
+      // Assign comments based on optimization quality
+      if (efficiency >= 99.9) {
+        gradingBar.className = "bg-emerald-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-emerald-400 font-extrabold'>PERFECT OPTIMUM!</span> You found the absolute best efficiency for this sheet size.`;
+      } else if (efficiency >= 95) {
+        gradingBar.className = "bg-emerald-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-emerald-400 font-bold'>Excellent Optimization!</span> Extremely close to the continuous mathematical optimum.`;
+      } else if (efficiency >= 85) {
+        gradingBar.className = "bg-sky-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-sky-400 font-semibold'>Good Box.</span> Some minor tweaks can push the volume closer to limits.`;
+      } else if (efficiency >= 60) {
+        gradingBar.className = "bg-amber-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-amber-400'>Suboptimal.</span> Check for unsealed seams and adjust cuts to maximize base and height.`;
+      } else if (efficiency > 0) {
+        gradingBar.className = "bg-rose-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = `<span class='text-rose-400'>Highly Leaky/Inefficient.</span> Gaps on unaligned cuts are venting water!`;
+      } else {
+        gradingBar.className = "bg-slate-600 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "Box volume collapsed to 0. Avoid overlapping or excessive cutting.";
+      }
+
+      // Track session records
+      const foldL = Math.max(cuts.tl.w, cuts.bl.w);
+      const foldR = Math.max(cuts.tr.w, cuts.br.w);
+      const foldT = Math.max(cuts.tl.h, cuts.tr.h);
+      const foldB = Math.max(cuts.bl.h, cuts.br.h);
+      const dimsStr = `${(sheetSize.w-foldL-foldR).toFixed(2)}"×${(sheetSize.l-foldT-foldB).toFixed(2)}"×${watertightH.toFixed(2)}"`;
+
+      session.lastWaterVol = waterVol;
+      session.lastNominalVol = nominalVol;
+      session.lastDims = dimsStr;
+
+      historyLast.textContent = `${waterVol.toFixed(2)} in³ (${dimsStr})`;
+
+      if (session.bestWaterVol === null || waterVol > session.bestWaterVol) {
+        session.bestWaterVol = waterVol;
+        session.bestNominalVol = nominalVol;
+        session.bestDims = dimsStr;
+
+        historyBest.textContent = `${waterVol.toFixed(2)} in³ (${dimsStr})`;
+      }
+    }
+
+    function updateDynamicTutorialText() {
+      const W = sheetSize.w;
+      const L = sheetSize.l;
+      const opt = getContinuousOptimum(W, L);
+
+      // Show analytical proof steps for custom sizes
+      dynamicCalculusDetails.innerHTML = `
+        <p class="font-bold text-white mb-1">Applying $W = ${W}$ and $L = ${L}$:</p>
+        <p>Your custom volume formula is: $V(x) = 4x^3 - ${2 * (W+L)}x^2 + ${W*L}x$</p>
+        <p>Equating the derivative to zero: $12x^2 - ${4 * (W+L)}x + ${W*L} = 0$</p>
+        <p>Solving the quadratic roots yields the ideal height:</p>
+        <p class="font-mono text-amber-400 mt-1 text-center font-bold">Optimal Height $x \\approx ${opt.x.toFixed(3)}\\text{ inches}$</p>
+        <p class="font-mono text-amber-400 text-center font-bold">Ideal Continuous Volume $V \\approx ${opt.vol.toFixed(2)}\\text{ cubic inches}$</p>
+        <p class="mt-2 text-[11px] text-slate-400 italic">Notice: Since your physical scissors cuts are constrained to 0.25" increments, compare your best game score to this theoretical maximum to see how close you can get!</p>
+      `;
+
+      // Trigger MathJax typeset update if loaded
+      if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+        MathJax.typesetPromise([dynamicCalculusDetails]).catch(err => console.log(err));
+      }
+    }
+
+    function init3DScene() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020617); // Dark Slate-950
+
+      // Use render-viewport which is always visible and has defined dimensions
+      const viewport = document.getElementById('render-viewport');
+      const width = viewport.clientWidth || 500;
+      const height = viewport.clientHeight || 450;
+
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      camera.position.set(0, 15, 20);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      
+      threeCanvasContainer.appendChild(renderer.domElement);
+
+      // Lights configuration
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.8);
+      dirLight.position.set(10, 20, 15);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      scene.add(dirLight);
+
+      // Grid helper setup
+      const shadowPlaneGeo = new THREE.PlaneGeometry(40, 40);
+      const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.15 });
+      const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+      shadowPlane.rotation.x = -Math.PI / 2;
+      shadowPlane.receiveShadow = true;
+      scene.add(shadowPlane);
+
+      const gridHelper = new THREE.GridHelper(30, 30, 0x334155, 0x1e293b);
+      gridHelper.position.y = -0.01;
+      scene.add(gridHelper);
+
+      setupHingedMeshes();
+      setupOrbitControls();
+      animateSceneLoop();
+
+      // Listen for browser/iframe resize events
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function setupHingedMeshes() {
+      const cardboardMat = new THREE.MeshStandardMaterial({
+        color: 0xc2410c, // True cardboard brown
+        side: THREE.DoubleSide,
+        roughness: 0.8,
+        metalness: 0.05
+      });
+
+      const waterMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.7,
+        roughness: 0.1,
+        metalness: 0.1
+      });
+
+      // Anchor groups
+      pivotL = new THREE.Group();
+      pivotR = new THREE.Group();
+      pivotT = new THREE.Group();
+      pivotB = new THREE.Group();
+
+      scene.add(pivotL);
+      scene.add(pivotR);
+      scene.add(pivotT);
+      scene.add(pivotB);
+
+      // Base board using unit geometry for consistent scaling
+      const baseGeo = new THREE.BoxGeometry(1, 1, 1);
+      baseMesh = new THREE.Mesh(baseGeo, cardboardMat);
+      baseMesh.castShadow = true;
+      baseMesh.receiveShadow = true;
+      scene.add(baseMesh);
+
+      // Cardboard fold panels using unit geometries
+      const flapGeoMock = new THREE.BoxGeometry(1, 1, 1);
+      flapL = new THREE.Mesh(flapGeoMock, cardboardMat);
+      flapR = new THREE.Mesh(flapGeoMock.clone(), cardboardMat);
+      flapT = new THREE.Mesh(flapGeoMock.clone(), cardboardMat);
+      flapB = new THREE.Mesh(flapGeoMock.clone(), cardboardMat);
+
+      flapL.castShadow = true; flapL.receiveShadow = true;
+      flapR.castShadow = true; flapR.receiveShadow = true;
+      flapT.castShadow = true; flapT.receiveShadow = true;
+      flapB.castShadow = true; flapB.receiveShadow = true;
+
+      pivotL.add(flapL);
+      pivotR.add(flapR);
+      pivotT.add(flapT);
+      pivotB.add(flapB);
+
+      // Water body mesh block
+      const waterGeo = new THREE.BoxGeometry(1, 1, 1);
+      waterMesh = new THREE.Mesh(waterGeo, waterMat);
+      scene.add(waterMesh);
+
+      syncStateFromInputs();
+    }
+
+    function update3DCardboardLayout(foldL, foldR, foldT, foldB, baseW, baseL) {
+      if (!baseMesh) return;
+
+      const baseThickness = BASE_THICKNESS;
+
+      // Rescale cardboard base plate
+      baseMesh.scale.set(baseW, baseThickness, baseL);
+      baseMesh.position.set(0, baseThickness / 2, 0);
+
+      // Align pivots to boundaries
+      pivotL.position.set(-baseW / 2, baseThickness, 0);
+      pivotR.position.set(baseW / 2, baseThickness, 0);
+      pivotT.position.set(0, baseThickness, -baseL / 2);
+      pivotB.position.set(0, baseThickness, baseL / 2);
+
+      // Update flap scale structures
+      flapL.scale.set(foldL, baseThickness, baseL);
+      flapL.position.set(-foldL / 2, 0, 0);
+
+      flapR.scale.set(foldR, baseThickness, baseL);
+      flapR.position.set(foldR / 2, 0, 0);
+
+      flapT.scale.set(baseW, baseThickness, foldT);
+      flapT.position.set(0, 0, -foldT / 2);
+
+      flapB.scale.set(baseW, baseThickness, foldB);
+      flapB.position.set(0, 0, foldB / 2);
+
+      // Scale water inside boundaries
+      waterMesh.scale.set(Math.max(0.01, baseW - 0.05), Math.max(0.01, waterHeight), Math.max(0.01, baseL - 0.05));
+      waterMesh.position.set(0, waterHeight / 2 + baseThickness, 0);
+    }
+
+    let isMouseDown = false;
+    let prevMousePos = { x: 0, y: 0 };
+    let theta = 0.5, phi = 1.0;
+    const camRadius = 22;
+
+    function setupOrbitControls() {
+      const getMousePos = (e) => {
+        if (e.touches && e.touches.length > 0) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+      };
+
+      const onDown = (e) => {
+        if (isFlatView) return;
+        isMouseDown = true;
+        prevMousePos = getMousePos(e);
+      };
+
+      const onMove = (e) => {
+        if (!isMouseDown) return;
+        const currentPos = getMousePos(e);
+        const deltaX = currentPos.x - prevMousePos.x;
+        const deltaY = currentPos.y - prevMousePos.y;
+
+        theta -= deltaX * 0.007;
+        phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, phi - deltaY * 0.007));
+
+        prevMousePos = currentPos;
+        updateCameraPos();
+      };
+
+      const onUp = () => { isMouseDown = false; };
+
+      threeCanvasContainer.addEventListener('mousedown', onDown);
+      threeCanvasContainer.addEventListener('touchstart', onDown, { passive: true });
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchend', onUp);
+
+      updateCameraPos();
+    }
+
+    function updateCameraPos() {
+      camera.position.x = camRadius * Math.sin(theta) * Math.cos(phi);
+      camera.position.z = camRadius * Math.cos(theta) * Math.cos(phi);
+      camera.position.y = camRadius * Math.sin(phi);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function triggerFoldAndFillSequence() {
+      if (isFolding) return;
+
+      // Force 3D Mode so they can watch the animation
+      toggleViewMode(false);
+
+      const foldL = Math.max(cuts.tl.w, cuts.bl.w);
+      const foldR = Math.max(cuts.tr.w, cuts.br.w);
+      const foldT = Math.max(cuts.tl.h, cuts.tr.h);
+      const foldB = Math.max(cuts.bl.h, cuts.br.h);
+
+      targetWaterHeight = watertightH;
+
+      if (targetWaterHeight <= 0 || (sheetSize.w - foldL - foldR) <= 0 || (sheetSize.l - foldT - foldB) <= 0) {
+        return;
+      }
+
+      animationPhase = 'folding';
+      isFolding = true;
+      foldAngle = 0;
+      waterHeight = 0;
+      clearLeakParticles();
+
+      btnAnimate.disabled = true;
+      btnAnimate.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Folding Cardboard...';
+    }
+
+    function clearLeakParticles() {
+      activeParticles.forEach(p => scene.remove(p.mesh));
+      activeParticles = [];
+    }
+
+    function updateLeakParticlesPhysics() {
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        p.mesh.position.add(p.velocity);
+        p.velocity.y -= 0.005; // gravity pull
+        p.age += 1;
+
+        p.mesh.material.opacity = Math.max(0, 1.0 - p.age / 50);
+
+        if (p.age > 50 || p.mesh.position.y < -0.1) {
+          scene.remove(p.mesh);
+          activeParticles.splice(i, 1);
+        }
+      }
+    }
+
+    function animateSceneLoop() {
+      requestAnimationFrame(animateSceneLoop);
+
+      if (animationPhase === 'folding') {
+        foldAngle += 0.035;
+        if (foldAngle >= Math.PI / 2) {
+          foldAngle = Math.PI / 2;
+          animationPhase = 'filling';
+        }
+
+        // Apply corrected folder angles to raise hinge assemblies upwards
+        pivotL.rotation.z = -foldAngle;
+        pivotR.rotation.z = foldAngle;
+        pivotT.rotation.x = foldAngle;
+        pivotB.rotation.x = -foldAngle;
+
+      } else if (animationPhase === 'filling') {
+        waterHeight += 0.02;
+        if (waterHeight >= targetWaterHeight) {
+          waterHeight = targetWaterHeight;
+          animationPhase = 'leaking';
+        }
+
+        const baseW = sheetSize.w - Math.max(cuts.tl.w, cuts.bl.w) - Math.max(cuts.tr.w, cuts.br.w);
+        const baseL = sheetSize.l - Math.max(cuts.tl.h, cuts.tr.h) - Math.max(cuts.bl.h, cuts.br.h);
+        waterMesh.scale.set(baseW - 0.05, waterHeight, baseL - 0.05);
+        waterMesh.position.y = waterHeight / 2 + BASE_THICKNESS;
+
+      } else if (animationPhase === 'leaking') {
+        setTimeout(() => {
+          if (animationPhase === 'leaking') {
+            animationPhase = 'idle';
+            isFolding = false;
+            btnAnimate.disabled = false;
+            btnAnimate.innerHTML = '<i class="fa-solid fa-play"></i> FOLD & FILL OPEN BOX';
+            commitScoresOnFoldFill();
+          }
+        }, 1500);
+      }
+
+      updateLeakParticlesPhysics();
+
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    function toggleViewMode(flat) {
+      if (flat) {
+        isFlatView = true;
+        viewFlat.className = "px-3.5 py-1.5 bg-amber-500 text-slate-950 rounded-md transition flex items-center gap-1.5";
+        view3D.className = "px-3.5 py-1.5 text-slate-400 rounded-md hover:text-white transition flex items-center gap-1.5";
+        
+        flatLayoutContainer.classList.remove('hidden');
+        threeCanvasContainer.classList.add('hidden');
+
+        viewportTitle.innerHTML = '<i class="fa-solid fa-map text-amber-500"></i> Cardboard Flat Layout';
+        viewportSubtitle.textContent = 'Analyze the dotted fold guidelines and crossed-out cut corners.';
+      } else {
+        isFlatView = false;
+        view3D.className = "px-3.5 py-1.5 bg-amber-500 text-slate-950 rounded-md transition flex items-center gap-1.5";
+        viewFlat.className = "px-3.5 py-1.5 text-slate-400 rounded-md hover:text-white transition flex items-center gap-1.5";
+
+        flatLayoutContainer.classList.add('hidden');
+        threeCanvasContainer.classList.remove('hidden');
+
+        viewportTitle.innerHTML = '<i class="fa-solid fa-cube text-amber-500"></i> Interactive 3D Fold View';
+        viewportSubtitle.textContent = 'Drag to rotate the 3D model. Folds must be perfectly aligned to launch animation.';
+
+        if (!scene) {
+          init3DScene();
+        } else {
+          // Trigger dynamic resize recalculation on toggle
+          onWindowResize();
+        }
+      }
+    }
+
+    const toggleModal = () => tutorialModal.classList.toggle('hidden');
+    btnTutorial.addEventListener('click', toggleModal);
+    btnCloseModal.addEventListener('click', toggleModal);
+    btnCloseModalFooter.addEventListener('click', toggleModal);
+    tutorialModal.addEventListener('click', (e) => {
+      if (e.target === tutorialModal) toggleModal();
+    });
+
+    sheetWInput.addEventListener('input', validateAndUpdateLimits);
+    sheetLInput.addEventListener('input', validateAndUpdateLimits);
+
+    const sliders = [
+      { el: cutTLW, isWidth: true },
+      { el: cutTLH, isWidth: false },
+      { el: cutTRW, isWidth: true },
+      { el: cutTRH, isWidth: false },
+      { el: cutBLW, isWidth: true },
+      { el: cutBLH, isWidth: false },
+      { el: cutBRW, isWidth: true },
+      { el: cutBRH, isWidth: false }
+    ];
+
+    sliders.forEach(sliderObj => {
+      sliderObj.el.addEventListener('input', () => {
+        if (animationPhase !== 'idle') {
+          animationPhase = 'idle';
+          isFolding = false;
+          btnAnimate.disabled = false;
+          btnAnimate.innerHTML = '<i class="fa-solid fa-play"></i> FOLD & FILL OPEN BOX';
+          clearLeakParticles();
+        }
+
+        if (pivotL) {
+          pivotL.rotation.z = 0;
+          pivotR.rotation.z = 0;
+          pivotT.rotation.x = 0;
+          pivotB.rotation.x = 0;
+          waterHeight = 0;
+          waterMesh.scale.set(0.01, 0.01, 0.01);
+        }
+
+        // Apply symmetry if toggle switch is active
+        applySymmetry(sliderObj.el, sliderObj.isWidth);
+        syncStateFromInputs();
+      });
+    });
+
+    // Force updates when user toggles the symmetry switch
+    toggleSymmetric.addEventListener('change', () => {
+      if (toggleSymmetric.checked) {
+        // Copy top-left cuts across all corners
+        applySymmetry(cutTLW, true);
+        applySymmetry(cutTLH, false);
+        syncStateFromInputs();
+      }
+    });
+
+    btnAnimate.addEventListener('click', triggerFoldAndFillSequence);
+
+    viewFlat.addEventListener('click', () => toggleViewMode(true));
+    view3D.addEventListener('click', () => toggleViewMode(false));
+
+    window.onload = function() {
+      validateAndUpdateLimits();
+    }
+  </script>
+</body>
+</html>
