@@ -1,1 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espresso Economics: The Coffee Pricing Game</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for beautiful plotting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- MathJax for rendering math formulas perfectly -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom scrollbar for slate panels */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    /* Steaming Coffee Animation */
+    @keyframes steam {
+      0% { transform: translateY(0) scaleX(1); opacity: 0.5; }
+      50% { transform: translateY(-5px) scaleX(1.2); opacity: 0.8; }
+      100% { transform: translateY(-12px) scaleX(0.8); opacity: 0; }
+    }
+    .steam-line {
+      animation: steam 2.5s infinite ease-out;
+    }
+    .steam-delay-1 { animation-delay: 0.6s; }
+    .steam-delay-2 { animation-delay: 1.2s; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
 
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-amber-600 rounded-lg text-white shadow-lg shadow-amber-500/30">
+          <i class="fa-solid fa-mug-hot text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">Espresso Economics</h1>
+          <p class="text-xs text-slate-400">Mastering Elasticity, Cost, and Pricing Curves</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-tutorial" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition duration-150 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap"></i> Economics Tutorial & Math
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Controls & Dynamic Calculations -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Target/Goal selector -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-bold text-slate-400 tracking-wider uppercase mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-crosshairs text-amber-500"></i> Select Optimization Target
+        </h2>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="target-demand" onclick="setGoal('demand')" class="py-2.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg border border-indigo-500 transition duration-150 flex flex-col items-center gap-1">
+            <i class="fa-solid fa-users text-lg"></i>
+            <span>Max Demand</span>
+          </button>
+          <button id="target-revenue" onclick="setGoal('revenue')" class="py-2.5 px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-xl border border-slate-600 transition duration-150 flex flex-col items-center gap-1">
+            <i class="fa-solid fa-money-bill-trend-up text-lg"></i>
+            <span>Max Revenue</span>
+          </button>
+          <button id="target-profit" onclick="setGoal('profit')" class="py-2.5 px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-xl border border-slate-600 transition duration-150 flex flex-col items-center gap-1">
+            <i class="fa-solid fa-sack-dollar text-lg"></i>
+            <span>Max Profit</span>
+          </button>
+        </div>
+        <p id="goal-description" class="text-xs text-slate-400 mt-3 italic leading-relaxed">
+          Goal: Set the optimal price to attract as many customers as possible (Demand). Yes, coffee can even be free!
+        </p>
+      </div>
+
+      <!-- Interactive Price Slider -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-amber-400"></i> Price Controller
+          </h2>
+          <span class="text-xs text-slate-500">(Drag to adjust)</span>
+        </div>
+
+        <div class="p-4 bg-slate-900 rounded-xl border border-slate-950 flex justify-between items-center">
+          <div>
+            <span class="text-xs font-bold text-amber-500 uppercase tracking-wider block">Set Coffee Price</span>
+            <span class="text-3xl font-black text-white font-mono" id="label-price">$4.00</span>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-500 uppercase block">Profit Margin per Cup</span>
+            <span class="text-lg font-bold text-emerald-400 font-mono" id="label-margin">+$0.00</span>
+          </div>
+        </div>
+
+        <div>
+          <input type="range" id="price-slider" min="0" max="15" step="0.05" value="4.00" 
+                 class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none">
+          <div class="flex justify-between text-xs text-slate-500 mt-1 font-mono">
+            <span>$0.00 (Free)</span>
+            <span id="label-max-slider-value">$15.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scoreboard Card -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-trophy text-emerald-400"></i> Scoreboard
+          </h2>
+          <button id="btn-lock-last" class="text-xs px-2.5 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 hover:text-white transition" onclick="lockCurrentScore()">
+            <i class="fa-solid fa-thumbtack"></i> Lock Score
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <!-- Demand HUD -->
+          <div class="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Demand</span>
+            <span class="text-xl font-bold font-mono text-slate-100" id="stat-demand">600</span>
+            <span class="text-[10px] text-slate-500">cups / day</span>
+          </div>
+          <!-- Revenue HUD -->
+          <div class="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-amber-500 uppercase tracking-wider block">Revenue</span>
+            <span class="text-xl font-bold font-mono text-slate-100" id="stat-revenue">$2,400</span>
+            <span class="text-[10px] text-slate-500">gross income</span>
+          </div>
+          <!-- Profit HUD -->
+          <div class="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider block">Profit</span>
+            <span class="text-xl font-bold font-mono text-slate-100" id="stat-profit">$1,200</span>
+            <span class="text-[10px] text-slate-500">net income</span>
+          </div>
+        </div>
+
+        <hr class="border-slate-700/50">
+
+        <!-- History & Best Performance -->
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between items-center py-1 bg-slate-900/30 px-2 rounded">
+            <span class="text-slate-400">Last Locked Score:</span>
+            <span id="history-last" class="font-mono text-slate-300">No locked trials yet</span>
+          </div>
+          <div class="flex justify-between items-center py-1 bg-slate-900/30 px-2 rounded">
+            <span class="text-emerald-400 font-medium">Personal Best (This Session):</span>
+            <span id="history-best" class="font-mono text-emerald-400 font-semibold">---</span>
+          </div>
+        </div>
+
+        <hr class="border-slate-700/50">
+
+        <!-- Grading Assessment Progress -->
+        <div class="pt-2">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs text-slate-400">Optimization Accuracy</span>
+            <span id="grading-percentage" class="text-xs font-bold text-amber-400">0%</span>
+          </div>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div id="grading-bar" class="bg-amber-500 h-full w-[0%] transition-all duration-300"></div>
+          </div>
+          <p id="grading-feedback" class="text-xs text-slate-400 italic mt-2">Adjust the price to find the perfect value.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive Graphs & Dynamic Simulators -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <!-- Visual Coffee Shop simulator HUD -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+        
+        <!-- Cup Visual -->
+        <div class="flex items-center gap-4">
+          <div class="relative w-20 h-20 bg-slate-900 border border-slate-700 rounded-2xl flex items-center justify-center shrink-0">
+            <!-- Animated steam paths -->
+            <svg class="absolute top-1 left-0 w-full h-8 overflow-visible" viewBox="0 0 100 50">
+              <path d="M30,30 Q35,20 30,10 T35,0" fill="none" stroke="#d1d5db" stroke-width="2.5" class="steam-line" />
+              <path d="M50,32 Q45,22 50,12 T45,2" fill="none" stroke="#d1d5db" stroke-width="2.5" class="steam-line steam-delay-1" />
+              <path d="M70,30 Q75,20 70,10 T75,0" fill="none" stroke="#d1d5db" stroke-width="2.5" class="steam-line steam-delay-2" />
+            </svg>
+            <i class="fa-solid fa-mug-hot text-amber-500 text-4xl mt-3"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-200">The Corner Cafe</h3>
+            <p id="customer-feedback" class="text-xs text-slate-400 leading-normal max-w-sm mt-0.5">
+              The shop is open! Set a price to welcome your morning customers.
+            </p>
+          </div>
+        </div>
+
+        <!-- Animated queue visualizer -->
+        <div class="w-full md:w-auto flex flex-col gap-1 items-center bg-slate-900/50 border border-slate-800 rounded-xl p-3 shrink-0">
+          <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest block">Customer Queue</span>
+          <div id="queue-container" class="flex gap-1.5 h-8 items-center text-xl select-none">
+            <!-- Populated dynamically via Javascript -->
+          </div>
+          <span id="queue-caption" class="text-[10px] text-slate-400 font-mono">0 customers / hr</span>
+        </div>
+      </div>
+
+      <!-- Interactive Pricing Curves Chart -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl flex-grow flex flex-col justify-between min-h-[350px]">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-100">Economic Elasticity Curves</h2>
+            <p class="text-[11px] text-slate-400">Optimal intercept paths shift as you adjust the parameters below.</p>
+          </div>
+          <div class="flex gap-4 text-xs font-semibold">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-indigo-500 rounded-full inline-block"></span> Demand</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block"></span> Revenue</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block"></span> Profit</span>
+          </div>
+        </div>
+
+        <!-- Canvas Holder -->
+        <div class="relative flex-grow min-h-[220px]">
+          <canvas id="elasticity-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Parameters Panel -->
+      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-gears text-indigo-400"></i> Market Parameters Configuration
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Parameter a (Base Demand) -->
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-300">Base Demand (a):</span>
+              <span id="label-param-a" class="font-mono text-indigo-400">1000</span>
+            </div>
+            <input type="range" id="param-a" min="200" max="2500" step="50" value="1000" 
+                   class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            <p class="text-[10px] text-slate-400">Demand when coffee is free ($0.00)</p>
+          </div>
+
+          <!-- Parameter b (Price Sensitivity) -->
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-300">Price Elasticity (b):</span>
+              <span id="label-param-b" class="font-mono text-indigo-400">100</span>
+            </div>
+            <input type="range" id="param-b" min="20" max="300" step="10" value="100" 
+                   class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            <p class="text-[10px] text-slate-400">Rate at which high prices scare customers</p>
+          </div>
+
+          <!-- Parameter c (Unit Cost) -->
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-300">Unit Cost (c):</span>
+              <span id="label-param-c" class="font-mono text-indigo-400">$4.00</span>
+            </div>
+            <input type="range" id="param-c" min="0.00" max="8.00" step="0.25" value="4.00" 
+                   class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            <p class="text-[10px] text-slate-400">Wholesale cost of ingredients & overhead</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Tutorial modal -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-750 p-5 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-500"></i> Mathematical Coffee Optimization
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5 text-sm text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="text-white font-bold mb-1.5">How Does Price Determine Demand?</h4>
+          <p>
+            This simulator models demand as a simple linear function of the coffee price ($p$). When the price goes up, demand drops continuously. If the price goes beyond the point where demand hits zero, demand stays at exactly zero (negative demand isn't possible):
+          </p>
+          <div class="bg-slate-900 p-4 rounded-xl text-center font-mono text-indigo-400 border border-slate-950 my-2 text-base">
+            $$\text{Demand} = \max(0, a - b \cdot p)$$
+          </div>
+          <p class="text-xs text-slate-400">
+            Where $a$ represents the base size of your target audience (maximum market size) and $b$ is the elasticity coefficient representing how price-sensitive your customers are.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Maximizing Revenue vs. Profit vs. Demand</h4>
+          <p class="mb-2">
+            The ideal economic price depends entirely on your operational goals. If we want to find the exact maximums, we use derivatives:
+          </p>
+          <div class="space-y-2">
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-950">
+              <p class="font-bold text-indigo-400 text-xs uppercase block">1. Maximizing Demand (Volume Leader):</p>
+              <p class="font-mono text-indigo-300 my-1">$$\text{Demand}(p) = \max(0, a - b \cdot p)$$</p>
+              <p class="text-xs">Since demand is strictly decreasing as price rises, the absolute maximum demand is achieved when the price is completely free: $$p^*_{\text{demand}} = 0$$</p>
+            </div>
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-950">
+              <p class="font-bold text-amber-400 text-xs uppercase block">2. Maximizing Revenue (No overhead considered):</p>
+              <p class="font-mono text-amber-300 my-1">$$\text{Revenue}(p) = p \cdot (a - b \cdot p) = a \cdot p - b \cdot p^2$$</p>
+              <p class="text-xs">Take the derivative and set to zero: $$a - 2b \cdot p = 0 \implies p^*_{\text{revenue}} = \frac{a}{2b}$$</p>
+            </div>
+            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-950">
+              <p class="font-bold text-emerald-400 text-xs uppercase block">3. Maximizing Profit (Accounting for coffee costs, $c$):</p>
+              <p class="font-mono text-emerald-300 my-1">$$\text{Profit}(p) = (p - c) \cdot (a - b \cdot p) = -b \cdot p^2 + (a + b \cdot c) \cdot p - a \cdot c$$</p>
+              <p class="text-xs">Take the derivative and set to zero: $$-2b \cdot p + a + b \cdot c = 0 \implies p^*_{\text{profit}} = \frac{a + b \cdot c}{2b} = \frac{a}{2b} + \frac{c}{2}$$</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-indigo-950/30 border border-indigo-900/30 rounded-xl p-4 text-xs">
+          <h4 class="text-indigo-400 font-bold mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-lightbulb"></i> The Big Takeaway
+          </h4>
+          <p>
+            Notice that the optimal pricing for profit is always exactly half of your unit cost added to the optimal revenue price! As coffee beans ($c$) get more expensive, your optimal price point moves right, and your max achievable margins shrink.
+          </p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-750 p-4 border-t border-slate-700 text-right">
+        <button id="btn-close-modal-footer" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold rounded-lg transition">
+          Start Brewing!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- ECONOMIC EQUATION STATE ---
+    let model = {
+      // Inputs
+      price: 4.00,
+      
+      // Market Parameters
+      a: 1000, // Base demand
+      b: 100,  // Elasticity
+      c: 4.00, // Cost
+
+      // Optimization Goal
+      currentGoal: 'profit', // 'demand', 'revenue', 'profit'
+      
+      // Dynamic Calculated Values
+      calculated: {
+        demand: 0,
+        revenue: 0,
+        profit: 0
+      },
+
+      // Optimal Solutions
+      optimal: {
+        price: 0,
+        score: 0
+      },
+
+      // Personal Session History
+      bestScore: 0,
+      bestPrice: 0,
+      lastLockedScore: null,
+      lastLockedPrice: null
+    };
+
+    // Chart.js instance handle
+    let chartInstance = null;
+
+    // --- UI REGISTRY ---
+    const priceSlider = document.getElementById('price-slider');
+    const labelPrice = document.getElementById('label-price');
+    const labelMargin = document.getElementById('label-margin');
+    const labelMaxSlider = document.getElementById('label-max-slider-value');
+
+    const paramA = document.getElementById('param-a');
+    const paramB = document.getElementById('param-b');
+    const paramC = document.getElementById('param-c');
+    const labelParamA = document.getElementById('label-param-a');
+    const labelParamB = document.getElementById('label-param-b');
+    const labelParamC = document.getElementById('label-param-c');
+
+    const statDemand = document.getElementById('stat-demand');
+    const statRevenue = document.getElementById('stat-revenue');
+    const statProfit = document.getElementById('stat-profit');
+
+    const historyLast = document.getElementById('history-last');
+    const historyBest = document.getElementById('history-best');
+
+    const gradingPercentage = document.getElementById('grading-percentage');
+    const gradingBar = document.getElementById('grading-bar');
+    const gradingFeedback = document.getElementById('grading-feedback');
+    const goalDescription = document.getElementById('goal-description');
+
+    const queueContainer = document.getElementById('queue-container');
+    const queueCaption = document.getElementById('queue-caption');
+    const customerFeedback = document.getElementById('customer-feedback');
+
+    const tutorialModal = document.getElementById('tutorial-modal');
+    const btnTutorial = document.getElementById('btn-tutorial');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+
+    // --- MATHEMATICAL FORMULAS ---
+    
+    function calculateMetrics(price) {
+      // Demand is flattened to 0 when price passes intercept (a/b)
+      const demand = Math.max(0, model.a - (model.b * price));
+      const revenue = price * demand;
+      const profit = (price - model.c) * demand;
+      return { demand, revenue, profit };
+    }
+
+    function solveOptimums() {
+      if (model.currentGoal === 'demand') {
+        // Trivial case: true demand maximization is at price = $0.00
+        const optimalPrice = 0.0;
+        const metrics = calculateMetrics(optimalPrice);
+        return { price: optimalPrice, score: metrics.demand };
+      } 
+      else if (model.currentGoal === 'revenue') {
+        // R'(p) = a - 2bp = 0 => p = a/(2b)
+        const optimalPrice = Math.max(0, model.a / (2 * model.b));
+        const metrics = calculateMetrics(optimalPrice);
+        return { price: optimalPrice, score: metrics.revenue };
+      } 
+      else {
+        // P'(p) = -2bp + a + bc = 0 => p = (a + b*c)/(2b)
+        const optimalPrice = Math.max(model.c, (model.a + model.b * model.c) / (2 * model.b));
+        const metrics = calculateMetrics(optimalPrice);
+        return { price: optimalPrice, score: metrics.profit };
+      }
+    }
+
+    // --- STATE SYNCHRONIZATION ---
+
+    function syncStateWithUI() {
+      // 1. Read variables
+      model.a = parseFloat(paramA.value);
+      model.b = parseFloat(paramB.value);
+      model.c = parseFloat(paramC.value);
+
+      // 2. Scale Price slider range dynamically to let prices go 1.5x past zero demand threshold
+      const interceptPrice = model.a / model.b;
+      const maxSliderPrice = Math.max(10, interceptPrice * 1.5);
+      priceSlider.max = maxSliderPrice.toFixed(2);
+      labelMaxSlider.textContent = `$${maxSliderPrice.toFixed(2)}`;
+
+      // Clip price to valid bounds if slider limits change
+      if (model.price > maxSliderPrice) {
+        model.price = maxSliderPrice;
+        priceSlider.value = maxSliderPrice.toFixed(2);
+      }
+
+      model.price = parseFloat(priceSlider.value);
+
+      // 3. Update parameter visual labels
+      labelParamA.textContent = model.a;
+      labelParamB.textContent = model.b;
+      labelParamC.textContent = `$${model.c.toFixed(2)}`;
+
+      // 4. Perform math equations
+      const liveMetrics = calculateMetrics(model.price);
+      model.calculated = liveMetrics;
+
+      // 5. Compute theoretical optima
+      const opt = solveOptimums();
+      model.optimal = opt;
+
+      // 6. Update Stats labels
+      labelPrice.textContent = `$${model.price.toFixed(2)}`;
+      
+      const margin = model.price - model.c;
+      if (margin >= 0) {
+        labelMargin.textContent = `+$${margin.toFixed(2)}`;
+        labelMargin.className = "text-lg font-bold text-emerald-400 font-mono";
+      } else {
+        labelMargin.textContent = `-$${Math.abs(margin).toFixed(2)}`;
+        labelMargin.className = "text-lg font-bold text-rose-500 font-mono";
+      }
+
+      statDemand.textContent = Math.round(liveMetrics.demand);
+      statRevenue.textContent = `$${Math.round(liveMetrics.revenue).toLocaleString()}`;
+      
+      if (liveMetrics.profit >= 0) {
+        statProfit.textContent = `$${Math.round(liveMetrics.profit).toLocaleString()}`;
+        statProfit.className = "text-xl font-bold font-mono text-emerald-400";
+      } else {
+        statProfit.textContent = `-$${Math.round(Math.abs(liveMetrics.profit)).toLocaleString()}`;
+        statProfit.className = "text-xl font-bold font-mono text-rose-500";
+      }
+
+      // Evaluate Accuracy Score
+      let scoreCurrent = 0;
+      if (model.currentGoal === 'demand') scoreCurrent = liveMetrics.demand;
+      else if (model.currentGoal === 'revenue') scoreCurrent = liveMetrics.revenue;
+      else scoreCurrent = liveMetrics.profit;
+
+      let accuracy = 0;
+      if (model.optimal.score > 0) {
+        // Compute relative accuracy ratio
+        if (model.currentGoal === 'profit' && scoreCurrent < 0) {
+          accuracy = 0;
+        } else {
+          accuracy = Math.max(0, 100 - (Math.abs(model.optimal.score - scoreCurrent) / model.optimal.score) * 100);
+        }
+      } else if (model.optimal.score === 0 && scoreCurrent === 0) {
+        accuracy = 100;
+      }
+
+      gradingPercentage.textContent = `${accuracy.toFixed(1)}%`;
+      gradingBar.style.width = `${accuracy}%`;
+
+      // Visual progress feedback
+      if (accuracy >= 99.8) {
+        gradingBar.className = "bg-emerald-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "<span class='text-emerald-400 font-bold'>Perfect Optimum!</span> You hit the mathematically ideal price.";
+        updateBestSessionScore(scoreCurrent, model.price);
+      } else if (accuracy >= 97) {
+        gradingBar.className = "bg-emerald-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "<span class='text-emerald-400 font-semibold'>Excellent Pricing!</span> Extremely close to maximum optimization.";
+        updateBestSessionScore(scoreCurrent, model.price);
+      } else if (accuracy >= 90) {
+        gradingBar.className = "bg-cyan-400 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "<span class='text-cyan-400 font-medium'>Very Good.</span> Little adjustments can improve yields.";
+      } else if (accuracy >= 70) {
+        gradingBar.className = "bg-amber-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "<span class='text-amber-400'>Sub-optimal.</span> Try sliding closer to the curve peak.";
+      } else {
+        gradingBar.className = "bg-rose-500 h-full transition-all duration-300";
+        gradingFeedback.innerHTML = "<span class='text-rose-500'>Far off target.</span> Observe the curves carefully!";
+      }
+
+      // Update Coffee Shop visual HUD
+      updateVisualShop(liveMetrics.demand, margin);
+
+      // Redraw curves
+      updateGraph();
+    }
+
+    // --- SHOP CROWD GRAPHICS & FEEDBACK ---
+    function updateVisualShop(demand, margin) {
+      // Set crowd size from 0 to 12 avatars
+      const maxDemandRepresented = model.a;
+      const fraction = demand / maxDemandRepresented;
+      const avatarCount = Math.min(12, Math.round(fraction * 12));
+
+      queueContainer.innerHTML = '';
+      for (let i = 0; i < avatarCount; i++) {
+        const span = document.createElement('span');
+        span.className = "animate-bounce";
+        span.style.animationDelay = `${i * 0.1}s`;
+        span.textContent = "👤";
+        queueContainer.appendChild(span);
+      }
+
+      if (avatarCount === 0) {
+        queueContainer.innerHTML = '<span class="text-xs text-slate-500 font-semibold italic">Empty shop...</span>';
+      }
+
+      queueCaption.textContent = `${Math.round(demand)} customers / day`;
+
+      // Custom speech feedback
+      if (model.price > model.a / model.b) {
+        customerFeedback.innerHTML = `<span class="text-rose-400 font-semibold"><i class="fa-solid fa-store-slash"></i> Market Collapse!</span> Pricing coffee at $${model.price.toFixed(2)} is higher than anyone's willingness to pay. Demand is zero.`;
+      } else if (model.price === 0) {
+        customerFeedback.innerHTML = `<span class="text-indigo-400 font-semibold"><i class="fa-solid fa-gift"></i> Completely Free!</span> Max possible attendance. Customers are in heaven, but is your cash register?`;
+      } else if (margin < 0) {
+        customerFeedback.innerHTML = `<span class="text-rose-400 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Bankruptcy Path!</span> Selling coffee below cost ($${model.c.toFixed(2)}) earns customers but burns your funds.`;
+      } else if (demand > model.a * 0.8) {
+        customerFeedback.innerHTML = `<span class="text-indigo-400 font-semibold"><i class="fa-solid fa-face-smile"></i> Crowd Magnet!</span> Cheap coffee ($${model.price.toFixed(2)}) is bringing massive volumes. Is it optimal for profits, though?`;
+      } else if (demand < model.a * 0.2) {
+        customerFeedback.innerHTML = `<span class="text-amber-400 font-semibold"><i class="fa-solid fa-face-frown"></i> Exorbitant!</span> High pricing ($${model.price.toFixed(2)}) limits shop attendance to premium connoisseurs.`;
+      } else {
+        customerFeedback.innerHTML = `<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-mug-hot"></i> Smooth Operation!</span> Your coffee pricing is welcoming stable crowds ($${Math.round(demand)}/day) with clear margins.`;
+      }
+    }
+
+    // --- SESSION TRACKERS ---
+    
+    function updateBestSessionScore(score, price) {
+      if (model.bestScore === 0 || score > model.bestScore) {
+        model.bestScore = score;
+        model.bestPrice = price;
+        historyBest.textContent = `${Math.round(score).toLocaleString()} unit goals (at $${price.toFixed(2)})`;
+      }
+    }
+
+    function lockCurrentScore() {
+      let scoreToLock = 0;
+      let unitText = '';
+      if (model.currentGoal === 'demand') {
+        scoreToLock = model.calculated.demand;
+        unitText = 'Demand';
+      } else if (model.currentGoal === 'revenue') {
+        scoreToLock = model.calculated.revenue;
+        unitText = 'Revenue';
+      } else {
+        scoreToLock = model.calculated.profit;
+        unitText = 'Profit';
+      }
+
+      model.lastLockedScore = scoreToLock;
+      model.lastLockedPrice = model.price;
+
+      historyLast.textContent = `${unitText}: $${Math.round(scoreToLock).toLocaleString()} (Price: $${model.price.toFixed(2)})`;
+    }
+
+    // --- GOAL ACTIONS ---
+    function setGoal(goalType) {
+      model.currentGoal = goalType;
+
+      // Update Active Button styling
+      ['demand', 'revenue', 'profit'].forEach(g => {
+        const btn = document.getElementById(`target-${g}`);
+        if (g === goalType) {
+          btn.className = "py-2.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg border border-indigo-500 transition duration-150 flex flex-col items-center gap-1";
+        } else {
+          btn.className = "py-2.5 px-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-xl border border-slate-600 transition duration-150 flex flex-col items-center gap-1";
+        }
+      });
+
+      // Update instructions info card text
+      if (goalType === 'demand') {
+        goalDescription.innerHTML = "Goal: Maximise <span class='text-indigo-400 font-semibold'>Demand (Customers)</span>. Lower prices increase crowd size. Set price to $0.00 to reach absolute maximum demand!";
+      } else if (goalType === 'revenue') {
+        goalDescription.innerHTML = "Goal: Maximise <span class='text-amber-400 font-semibold'>Gross Revenue (Price * Cups Sold)</span>. This represents the absolute peak size of the sales register.";
+      } else {
+        goalDescription.innerHTML = "Goal: Maximise <span class='text-emerald-400 font-semibold'>Net Profit (Margin * Cups Sold)</span>. This is the ultimate target of any sustainable commercial business.";
+      }
+
+      // Reset record trackers for new category
+      model.bestScore = 0;
+      model.bestPrice = 0;
+      historyBest.textContent = "---";
+
+      syncStateWithUI();
+    }
+
+    // --- GRAPHICS & PLOTTING CONFIGURATION ---
+
+    function initializeGraph() {
+      const ctx = document.getElementById('elasticity-chart').getContext('2d');
+      
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Demand',
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99, 102, 241, 0.05)',
+              borderWidth: 2,
+              data: [],
+              yAxisID: 'yDemand',
+              pointRadius: 0
+            },
+            {
+              label: 'Revenue',
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.05)',
+              borderWidth: 3,
+              data: [],
+              yAxisID: 'yFinancial',
+              pointRadius: 0
+            },
+            {
+              label: 'Profit',
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              borderWidth: 3,
+              data: [],
+              yAxisID: 'yFinancial',
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom',
+              min: 0,
+              max: 15,
+              ticks: { color: '#94a3b8', callback: (val) => `$${val.toFixed(1)}` },
+              grid: { color: 'rgba(71, 85, 105, 0.2)' }
+            },
+            yDemand: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: 'Demand (Cups/Day)', color: '#6366f1' },
+              ticks: { color: '#94a3b8' },
+              grid: { color: 'rgba(71, 85, 105, 0.2)' }
+            },
+            yFinancial: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: 'Financials ($)', color: '#10b981' },
+              ticks: { color: '#94a3b8' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+    }
+
+    function updateGraph() {
+      if (!chartInstance) return;
+
+      const stepCount = 60;
+      const interceptPrice = model.a / model.b;
+      // Let the graph x-axis go past zero demand up to the current slider's maximum boundary
+      const maxPrice = Math.max(10, interceptPrice * 1.5);
+      
+      let dataDemand = [];
+      let dataRevenue = [];
+      let dataProfit = [];
+
+      for (let i = 0; i <= stepCount; i++) {
+        const p = (maxPrice / stepCount) * i;
+        const metrics = calculateMetrics(p);
+
+        dataDemand.push({ x: p, y: Math.round(metrics.demand) });
+        dataRevenue.push({ x: p, y: Math.round(metrics.revenue) });
+        dataProfit.push({ x: p, y: Math.round(metrics.profit) });
+      }
+
+      // Update max boundaries of X scale dynamically
+      chartInstance.options.scales.x.max = parseFloat(maxPrice.toFixed(2));
+
+      // Bind data structures
+      chartInstance.data.datasets[0].data = dataDemand;
+      chartInstance.data.datasets[1].data = dataRevenue;
+      chartInstance.data.datasets[2].data = dataProfit;
+
+      // Update vertical line highlighting representing the current selected slider value
+      chartInstance.options.plugins.annotation = {
+        annotations: {
+          currentPriceLine: {
+            type: 'line',
+            scaleID: 'x',
+            value: model.price,
+            borderColor: '#f59e0b',
+            borderWidth: 1.5,
+            borderDash: [5, 5],
+            label: {
+              display: true,
+              content: 'Your Price',
+              backgroundColor: '#1e293b',
+              color: '#f59e0b',
+              font: { size: 9, weight: 'bold' },
+              position: 'end'
+            }
+          }
+        }
+      };
+
+      // Force recalculation of scales and redraw
+      chartInstance.update();
+    }
+
+    // --- EVENT TRIGGERS ---
+
+    priceSlider.addEventListener('input', syncStateWithUI);
+    paramA.addEventListener('input', syncStateWithUI);
+    paramB.addEventListener('input', syncStateWithUI);
+    paramC.addEventListener('input', syncStateWithUI);
+
+    // Modal Operations
+    const toggleModal = () => tutorialModal.classList.toggle('hidden');
+    btnTutorial.addEventListener('click', toggleModal);
+    btnCloseModal.addEventListener('click', toggleModal);
+    btnCloseModalFooter.addEventListener('click', toggleModal);
+    tutorialModal.addEventListener('click', (e) => {
+      if (e.target === tutorialModal) toggleModal();
+    });
+
+    // --- LAUNCH SIMULATOR ---
+    window.onload = function() {
+      initializeGraph();
+      setGoal('profit'); // Defaults directly to profit optimization level
+    }
+  </script>
+</body>
+</html>
