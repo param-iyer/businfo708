@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Route to OGGB</title>
+    <title>HELP! Take Me to OGGB!</title>
 
     <style>
         body {
@@ -22,18 +22,61 @@
         }
 
         h1 {
+            text-align: center;
+            color: #d32f2f;
+            line-height: 1.4;
             margin-top: 0;
-            color: #333;
         }
 
-        p {
-            color: #666;
+        .oggb-image {
+            width: 100%;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: block;
+        }
+
+        input[type="text"] {
+            width```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Me to OGGB!</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #d32f2f;
+            line-height: 1.4;
+            margin-top: 0;
+        }
+
+        .oggb-image {
+            width: 100%;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: block;
         }
 
         input[type="text"] {
             width: 100%;
             padding: 14px;
-            margin-top: 10px;
             font-size: 16px;
             box-sizing: border-box;
             border: 1px solid #ccc;
@@ -54,15 +97,11 @@
             border-radius: 8px;
             cursor: pointer;
             background: #fafafa;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s;
         }
 
         .transport-options label:hover {
-            background: #f0f0f0;
-        }
-
-        .transport-options input[type="radio"] {
-            margin-right: 6px;
+            background-color: #f0f0f0;
         }
 
         button {
@@ -84,7 +123,8 @@
         .note {
             margin-top: 15px;
             font-size: 0.9em;
-            color: #777;
+            color: #666;
+            text-align: center;
         }
 
         @media (max-width: 600px) {
@@ -97,14 +137,23 @@
 <body>
 
 <div class="container">
-    <h1>HELP - I'm late for BUSINFO 709 Final Test. Take me to OGGB!!!</h1>
 
-    <p>Enter your address and choose your preferred mode of transport.</p>
+    <h1>
+        HELP!<br>
+        I'm late for BUSINFO 709 Final Test.<br>
+        Take me to OGGB!!!
+    </h1>
+
+    <img
+        src="oggb.jpg"
+        alt="Owen G Glenn Building"
+        class="oggb-image"
+    >
 
     <input
         type="text"
         id="address"
-        placeholder="e.g. 123 Queen Street, Auckland"
+        placeholder="Enter your address"
     >
 
     <div class="transport-options">
@@ -125,12 +174,13 @@
     </div>
 
     <button onclick="openRoute()">
-        Open Route in Google Maps
+        Get Me to OGGB!
     </button>
 
     <div class="note">
         Your address is not stored by this page. It is only used to create a Google Maps directions link.
     </div>
+
 </div>
 
 <script>
@@ -142,11 +192,11 @@ function openRoute() {
         return;
     }
 
-    const mode =
-        document.querySelector('input[name="mode"]:checked').value;
+    const mode = document.querySelector(
+        'input[name="mode"]:checked'
+    ).value;
 
-    const destination =
-        "Owen G Glenn Building, University of Auckland";
+    const destination = "Owen G Glenn Building, University of Auckland";
 
     const url =
         "https://www.google.com/maps/dir/?api=1" +
