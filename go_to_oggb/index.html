@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HELP! Take Me to OGGB!</title>
+    <title>BUSINFO 709 Emergency Navigation System</title>
 
     <style>
         body {
@@ -26,24 +26,16 @@
             color: #d32f2f;
             line-height: 1.4;
             margin-top: 0;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
             font-size: 2.2rem;
-        }
-
-        .oggb-image {
-            width: 65%;
-            max-width: 500px;
-            display: block;
-            margin: 0 auto 30px auto;
-            border-radius: 10px;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 18px;
-            font-size: 1.2rem;
+            padding: 22px;
+            font-size: 1.4rem;
             text-align: center;
-            border: 2px solid #4285F4;
+            border: 3px solid #4285F4;
             border-radius: 8px;
             box-sizing: border-box;
         }
@@ -97,13 +89,17 @@
             color: #666;
         }
 
+        .oggb-image {
+            width: 50%;
+            max-width: 400px;
+            display: block;
+            margin: 30px auto 0 auto;
+            border-radius: 10px;
+        }
+
         @media (max-width: 600px) {
             h1 {
                 font-size: 1.6rem;
-            }
-
-            .oggb-image {
-                width: 90%;
             }
 
             .transport-options {
@@ -113,6 +109,10 @@
 
             .transport-options label {
                 width: 220px;
+            }
+
+            .oggb-image {
+                width: 80%;
             }
 
             button {
@@ -131,16 +131,10 @@
         Take me to OGGB!!!
     </h1>
 
-    <img
-        src="oggb.jpg"
-        alt="Owen G Glenn Building"
-        class="oggb-image"
-    >
-
     <input
         type="text"
         id="address"
-        placeholder="📍 Where are you right now?"
+        placeholder="📍 QUICK! Where are you?"
     >
 
     <div class="transport-options">
@@ -168,6 +162,12 @@
         🔒 Address is not stored.
     </div>
 
+    <img
+        src="oggb.jpg"
+        alt="Owen G Glenn Building"
+        class="oggb-image"
+    >
+
 </div>
 
 <script>
@@ -175,7 +175,7 @@ function openRoute() {
     const address = document.getElementById("address").value.trim();
 
     if (!address) {
-        alert("Please enter your address.");
+        alert("Please enter your address!");
         return;
     }
 
@@ -193,4 +193,7 @@ function openRoute() {
 
     window.open(url, "_blank");
 }
-</
+</script>
+
+</body>
+</html>
