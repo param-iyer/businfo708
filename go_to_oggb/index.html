@@ -32,4 +32,131 @@
 
         input[type="text"] {
             width: 100%;
-            padding: 
+            padding: 14px;
+            margin-top: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .transport-options {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .transport-options label {
+            flex: 1;
+            text-align: center;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #fafafa;
+            transition: all 0.2s ease;
+        }
+
+        .transport-options label:hover {
+            background: #f0f0f0;
+        }
+
+        .transport-options input[type="radio"] {
+            margin-right: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #4285F4;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #3367D6;
+        }
+
+        .note {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #777;
+        }
+
+        @media (max-width: 600px) {
+            .transport-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Route to OGGB</h1>
+
+    <p>Enter your address and choose your preferred mode of transport.</p>
+
+    <input
+        type="text"
+        id="address"
+        placeholder="e.g. 123 Queen Street, Auckland"
+    >
+
+    <div class="transport-options">
+        <label>
+            <input type="radio" name="mode" value="transit" checked>
+            🚌 Bus / Train
+        </label>
+
+        <label>
+            <input type="radio" name="mode" value="walking">
+            🚶 Walk
+        </label>
+
+        <label>
+            <input type="radio" name="mode" value="driving">
+            🚗 Drive
+        </label>
+    </div>
+
+    <button onclick="openRoute()">
+        Open Route in Google Maps
+    </button>
+
+    <div class="note">
+        Your address is not stored by this page. It is only used to create a Google Maps directions link.
+    </div>
+</div>
+
+<script>
+function openRoute() {
+    const address = document.getElementById("address").value.trim();
+
+    if (!address) {
+        alert("Please enter your address.");
+        return;
+    }
+
+    const mode =
+        document.querySelector('input[name="mode"]:checked').value;
+
+    const destination =
+        "Owen G Glenn Building, University of Auckland";
+
+    const url =
+        "https://www.google.com/maps/dir/?api=1" +
+        "&origin=" + encodeURIComponent(address) +
+        "&destination=" + encodeURIComponent(destination) +
+        "&travelmode=" + mode;
+
+    window.open(url, "_blank");
+}
+</script>
+
+</body>
+</html>
