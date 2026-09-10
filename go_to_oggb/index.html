@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route to OGGB</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Find Fastest Route to OGGB</h2>
+
+    <input
+        type="text"
+        id="address"
+        placeholder="Enter your address"
+    >
+
+    <button onclick="showRoute()">
+        Open Route in Google Maps
+    </button>
+
+    <script>
+        function showRoute() {
+            const address = document.getElementById("address").value.trim();
+
+            if (!address) {
+                alert("Please enter an address.");
+                return;
+            }
+
+            const destination =
+                "Owen G. Glenn Building, University of Auckland";
+
+            const url =
+                `https://www.google.com/maps/dir/?api=1` +
+                `&origin=${encodeURIComponent(address)}` +
+                `&destination=${encodeURIComponent(destination)}` +
+                `&travelmode=driving`;
+
+            window.open(url, "_blank");
+        }
+    </script>
+
+</body>
+</html>
