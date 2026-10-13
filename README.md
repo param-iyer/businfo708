@@ -1,5 +1,6 @@
 # Supply Chain Optimisation
 
+* Go to OGGB: [Open](https://param-iyer.github.io/businfo708/go_to_oggb/)
 * Facility Location Game: [Open](https://param-iyer.github.io/businfo708/facility_location_game/)
 * Coffee Pricing Game: [Open](https://param-iyer.github.io/businfo708/coffee_pricing_game/)
 * Cardboard Box Game: [Open](https://param-iyer.github.io/businfo708/cardboard_box_game/)
