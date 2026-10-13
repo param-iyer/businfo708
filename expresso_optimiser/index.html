@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espresso LP Optimizer - Linear Programming Interactive Lab</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    svg {
+      touch-action: none;
+    }
+    .grid-line {
+      stroke: #2d2620;
+    }
+    /* Pulsing anim for optimal point highlight */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulsing-ring {
+      animation: pulse-ring 2s infinite ease-in-out;
+      transform-origin: center;
+    }
+    /* Toggle switch styles */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #44403c;
+      transition: .2s;
+      border-radius: 20px;
+    }
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider-toggle {
+      background-color: #f59e0b;
+    }
+    input:checked + .slider-toggle:before {
+      transform: translateX(14px);
+    }
+  </style>
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Header -->
+  <header class="bg-stone-900 border-b border-stone-800 py-4 px-6 shadow-md shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-amber-700 rounded-xl text-white shadow-lg shadow-amber-900/30">
+          <i class="fa-solid fa-mug-hot text-2xl text-amber-100"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-orange-200 bg-clip-text text-transparent">Espresso LP Optimizer</h1>
+          <p class="text-xs text-stone-400">Interactive Linear Programming (LP) Sandbox & Geometric Solver</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-tutorial" class="px-4 py-2 bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-lg text-sm font-medium transition duration-150 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-400"></i> Learn LP & Simplex
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    
+    <!-- Left Column: Scoreboard / Controls / Parameter adjustments -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+
+      <!-- Scoreboard Card -->
+      <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <h2 class="text-xs font-bold text-stone-400 tracking-wider uppercase flex items-center justify-between">
+          <span><i class="fa-solid fa-chart-line text-amber-500 mr-1.5"></i> Optimization Scoreboard</span>
+          <span class="bg-stone-800 text-[10px] text-amber-400 px-2 py-0.5 rounded-full font-mono font-bold" id="badge-feasibility">Feasible</span>
+        </h2>
+
+        <!-- Total Profit Display -->
+        <div class="p-4 bg-amber-950/20 border border-amber-900/40 rounded-xl">
+          <div class="flex justify-between items-center text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">
+            <span>Total Operational Profit</span>
+            <span class="text-stone-400">Z = P₁x₁ + P₂x₂</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span class="text-3xl font-black font-mono text-white" id="score-profit">$1,400.00</span>
+            <span class="text-xs text-stone-400">per operating cycle</span>
+          </div>
+        </div>
+
+        <!-- Tracking metrics comparison -->
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Last Attempt -->
+          <div class="p-3 bg-stone-950/80 rounded-xl border border-stone-850 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Last Attempt</span>
+            <span class="text-xl font-bold font-mono text-stone-400 mt-1" id="score-last-profit">---</span>
+            <span class="text-[9px] text-stone-600 mt-1 font-mono truncate" id="score-last-mix">No previous mix</span>
+          </div>
+
+          <!-- Personal Best -->
+          <div class="p-3 bg-stone-950/80 border border-amber-900/10 rounded-xl flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-amber-500/70 uppercase tracking-wider block">Personal Best</span>
+            <span class="text-xl font-bold font-mono text-amber-400 mt-1" id="score-best-profit">---</span>
+            <span class="text-[9px] text-stone-500 mt-1 font-mono truncate" id="score-best-mix">---</span>
+          </div>
+        </div>
+
+        <hr class="border-stone-850">
+
+        <!-- Constraint Progress Bars with Toggles -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="text-[10px] font-bold text-stone-400 tracking-wider uppercase"><i class="fa-solid fa-weight-hanging text-stone-500 mr-1"></i> Resource Boundaries</h3>
+            <span class="text-[9px] text-stone-500 font-bold uppercase tracking-wider">Active</span>
+          </div>
+          
+          <!-- Kiln constraint -->
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-stone-300 font-medium flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-sm bg-orange-500 inline-block"></span>
+                Kiln Capacity (Hours)
+              </span>
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-stone-400 text-xs"><span id="kiln-usage" class="text-stone-200 font-bold">1200</span> / <span id="kiln-capacity">3000</span></span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-kiln" checked>
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+            </div>
+            <div class="w-full bg-stone-950 h-2 rounded-full overflow-hidden border border-stone-800" id="container-bar-kiln">
+              <div id="bar-kiln" class="bg-orange-500 h-full w-[100%] transition-all duration-150"></div>
+            </div>
+          </div>
+
+          <!-- Beans constraint -->
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-stone-300 font-medium flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block"></span>
+                Bean Supply (Silo Stock)
+              </span>
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-stone-400 text-xs"><span id="beans-usage" class="text-stone-200 font-bold">205</span> / <span id="beans-capacity">205</span></span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-beans" checked>
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+            </div>
+            <div class="w-full bg-stone-950 h-2 rounded-full overflow-hidden border border-stone-800" id="container-bar-beans">
+              <div id="bar-beans" class="bg-green-500 h-full w-[100%] transition-all duration-150"></div>
+            </div>
+          </div>
+
+          <!-- Labour constraint -->
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-stone-300 font-medium flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block"></span>
+                Labour Workforce (Hours)
+              </span>
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-stone-400 text-xs"><span id="labour-usage" class="text-stone-200 font-bold">500</span> / <span id="labour-capacity">500</span></span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-labour" checked>
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+            </div>
+            <div class="w-full bg-stone-950 h-2 rounded-full overflow-hidden border border-stone-800" id="container-bar-labour">
+              <div id="bar-labour" class="bg-blue-500 h-full w-[100%] transition-all duration-150"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time optimization feedback label -->
+        <p id="grading-feedback" class="text-xs text-stone-400 italic pt-1 leading-normal border-t border-stone-850">
+          Set your coffee production targets below to find the optimal operating profit!
+        </p>
+      </div>
+
+      <!-- Interactive Decision Variables Panel -->
+      <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-xl space-y-5">
+        <h3 class="text-xs font-bold text-stone-400 tracking-wider uppercase flex items-center gap-2 border-b border-stone-800 pb-2">
+          <i class="fa-solid fa-sliders text-amber-500"></i> Production Mix decisions
+        </h3>
+
+        <!-- Light Roast Decision Slider -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs">
+            <span class="text-stone-300 font-medium uppercase tracking-wider text-[11px]"><i class="fa-solid fa-circle text-amber-200/50 mr-1 text-[8px]"></i> Light Roast Production (<span class="font-bold text-stone-100">x₁</span>)</span>
+            <span class="font-mono font-extrabold text-amber-400 text-sm"><span id="val-x1">100</span> bags</span>
+          </div>
+          <input type="range" id="slider-x1" min="0" max="250" step="1" value="100" class="w-full accent-amber-500 h-1.5 bg-stone-950 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Medium Roast Decision Slider -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs">
+            <span class="text-stone-300 font-medium uppercase tracking-wider text-[11px]"><i class="fa-solid fa-circle text-amber-600/80 mr-1 text-[8px]"></i> Medium Roast Production (<span class="font-bold text-stone-100">x₂</span>)</span>
+            <span class="font-mono font-extrabold text-amber-500 text-sm"><span id="val-x2">100</span> bags</span>
+          </div>
+          <input type="range" id="slider-x2" min="0" max="250" step="1" value="100" class="w-full accent-amber-600 h-1.5 bg-stone-950 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- Solver Action trigger buttons -->
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button id="btn-save" class="py-2.5 bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-semibold text-xs tracking-wide rounded-xl transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-bookmark"></i> Lock in Current
+          </button>
+          <button id="btn-simplex" class="py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-stone-950 font-black text-xs tracking-wider rounded-xl shadow-lg transition active:scale-[0.98] flex items-center justify-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Simplex Solver
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced LP Sensitivity Variables Panel -->
+      <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <button id="btn-toggle-advanced" class="w-full flex items-center justify-between text-xs font-bold text-stone-400 tracking-wider uppercase">
+          <span><i class="fa-solid fa-sliders text-stone-500 mr-1.5"></i> Adjust Coefficients (Sensitivity)</span>
+          <i id="advanced-chevron" class="fa-solid fa-chevron-down transition-transform"></i>
+        </button>
+
+        <div id="advanced-panel" class="space-y-4 hidden pt-2 border-t border-stone-850">
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Profit Light Roast -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] text-stone-400 uppercase tracking-wider">Profit Light ($/bag)</label>
+              <input type="number" id="param-p1" step="0.5" value="6" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-1.5 text-xs text-amber-400 font-mono font-bold text-center">
+            </div>
+            <!-- Profit Medium Roast -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] text-stone-400 uppercase tracking-wider">Profit Med ($/bag)</label>
+              <input type="number" id="param-p2" step="0.5" value="8" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-1.5 text-xs text-amber-400 font-mono font-bold text-center">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Kiln capacity limit -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] text-stone-400 uppercase tracking-wider">Max Kiln Limit (Hrs)</label>
+              <input type="number" id="param-k-cap" step="50" value="3000" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-1.5 text-xs text-stone-300 font-mono text-center">
+            </div>
+            <!-- Beans capacity limit -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] text-stone-400 uppercase tracking-wider">Max Bean Limit (kg)</label>
+              <input type="number" id="param-b-cap" step="5" value="205" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-1.5 text-xs text-stone-300 font-mono text-center">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Labour capacity limit -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] text-stone-400 uppercase tracking-wider">Max Labour Limit (Hrs)</label>
+              <input type="number" id="param-l-cap" step="10" value="500" class="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-1.5 text-xs text-stone-300 font-mono text-center">
+            </div>
+            <div class="flex items-center justify-center pt-5">
+              <span class="text-[10px] text-stone-500 italic">2x₁ + 3x₂ coefficients</span>
+            </div>
+          </div>
+          
+          <div class="text-right">
+            <button id="btn-reset-params" class="text-[10px] text-amber-500 font-semibold hover:underline">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i> Reset to Defaults
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Interactive Geometric Plot and Constraints Visualizer -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 md:p-6 shadow-xl flex flex-col h-full min-h-[500px]">
+        <div class="flex justify-between items-start gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-stone-100 flex items-center gap-2">
+              <i class="fa-solid fa-diagram-project text-amber-500"></i> Geometric Feasible Region
+            </h2>
+            <p class="text-xs text-stone-400">Interactive XY graph mapping constraints. Drag the point or use sliders.</p>
+          </div>
+          <div class="text-right text-[10px] text-stone-400 font-mono space-y-0.5" id="equations-legend">
+            <div><span class="inline-block w-2 h-2 bg-orange-500 mr-1 rounded-sm"></span> Kiln: 12x₁ + 18x₂ ≤ <span id="eq-k-cap">3000</span></div>
+            <div><span class="inline-block w-2 h-2 bg-green-500 mr-1 rounded-sm"></span> Beans: 1.00x₁ + 1.05x₂ ≤ <span id="eq-b-cap">205</span></div>
+            <div><span class="inline-block w-2 h-2 bg-blue-500 mr-1 rounded-sm"></span> Labour: 2.00x₁ + 3.00x₂ ≤ <span id="eq-l-cap">500</span></div>
+          </div>
+        </div>
+
+        <!-- SVG Map Container for Linear Programming Coordinate System -->
+        <div id="render-viewport" class="relative flex-grow bg-stone-950 border border-stone-850 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center p-4">
+          
+          <!-- Live Floating On-Map Coordinate Tracker -->
+          <div id="onmap-hud" class="absolute top-4 left-4 bg-stone-900/90 border border-stone-800 px-3 py-2 rounded-lg shadow-xl flex items-center gap-4 z-10 select-none">
+            <div>
+              <p class="text-[9px] font-bold text-stone-500 uppercase">Selected Mix</p>
+              <p class="text-xs font-mono font-bold text-white"><span class="text-amber-300">x₁</span>:<span id="hud-x1">100</span>, <span class="text-amber-500">x₂</span>:<span id="hud-x2">100</span></p>
+            </div>
+            <div class="border-l border-stone-800 pl-4">
+              <p class="text-[9px] font-bold text-stone-500 uppercase">Current Profit</p>
+              <p class="text-xs font-mono font-bold text-emerald-400" id="hud-profit">$1,400.00</p>
+            </div>
+          </div>
+
+          <!-- Main SVG Canvas -->
+          <svg id="lp-svg" viewBox="-50 -30 580 520" class="w-full h-full max-w-[480px] max-h-[480px] select-none">
+            <defs>
+              <!-- Grid pattern matching mathematical quadrants -->
+              <pattern id="grid-pattern" width="50" height="50" patternUnits="userSpaceOnUse">
+                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(84, 73, 62, 0.25)" stroke-width="1" />
+              </pattern>
+              <!-- Shadow filters -->
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/>
+              </filter>
+            </defs>
+
+            <!-- Background Grid Pattern -->
+            <rect x="0" y="0" width="500" height="450" fill="url(#grid-pattern)" />
+
+            <!-- X and Y Axes -->
+            <line x1="0" y1="450" x2="500" y2="450" stroke="#544133" stroke-width="2.5" />
+            <line x1="0" y1="0" x2="0" y2="450" stroke="#544133" stroke-width="2.5" />
+
+            <!-- Dynamic Graph Coordinate Labels -->
+            <g id="svg-axis-labels-x" class="text-[11px] font-mono fill-stone-500 select-none">
+              <!-- Rendered programmatically based on parameter values -->
+            </g>
+            <g id="svg-axis-labels-y" class="text-[11px] font-mono fill-stone-500 select-none">
+              <!-- Rendered programmatically -->
+            </g>
+
+            <!-- Axis Explanations -->
+            <text x="250" y="495" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">X-AXIS: LIGHT ROAST (x₁ bags)</text>
+            <text x="-40" y="225" transform="rotate(-90, -40, 225)" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">Y-AXIS: MEDIUM ROAST (x₂ bags)</text>
+
+            <!-- Feasible Region Shaded Polygon Area -->
+            <polygon id="svg-feasible-area" points="" fill="rgba(245, 158, 11, 0.08)" stroke="none" class="transition-all duration-300" />
+
+            <!-- Constraint Boundary Line 1: Kiln -->
+            <line id="line-kiln" x1="0" y1="0" x2="0" y2="0" stroke="#f97316" stroke-width="3" stroke-linecap="round" class="transition-all" />
+            <!-- Constraint Boundary Line 2: Beans -->
+            <line id="line-beans" x1="0" y1="0" x2="0" y2="0" stroke="#22c55e" stroke-width="3" stroke-linecap="round" class="transition-all" />
+            <!-- Constraint Boundary Line 3: Labour -->
+            <line id="line-labour" x1="0" y1="0" x2="0" y2="0" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" class="transition-all" />
+
+            <!-- Dynamic Iso-profit Contour Line (Dashed overlay slider line) -->
+            <line id="line-isoprofit" x1="0" y1="0" x2="0" y2="0" stroke="#eab308" stroke-dasharray="6,4" stroke-width="2" class="opacity-80" />
+
+            <!-- Dynamic Optimal Highlight Target Marker -->
+            <circle id="optimal-target-glow" cx="0" cy="0" r="16" fill="none" stroke="#fbbf24" stroke-width="2" class="pulsing-ring opacity-0 transition-opacity duration-300" />
+            <polygon id="optimal-target-star" points="0,-7 2,-2 7,-2 3,1 5,6 0,3 -5,6 -3,1 -7,-2 -2,-2" fill="#fbbf24" stroke="#d97706" stroke-width="1" class="opacity-0 transition-opacity duration-300" />
+
+            <!-- Dynamic Simplex Search Marker Highlights -->
+            <circle id="simplex-glow" cx="0" cy="0" r="14" fill="none" stroke="#f59e0b" stroke-width="2" class="pulsing-ring opacity-0 transition-all duration-300" />
+            <circle id="simplex-marker" cx="0" cy="0" r="6" fill="#f59e0b" class="opacity-0 transition-all duration-300" />
+
+            <!-- Interactive User Selection Decision Node (Current coordinates) -->
+            <g id="user-node-group" class="cursor-grab active:cursor-grabbing">
+              <circle id="user-node-outer" cx="100" cy="100" r="15" fill="rgba(255, 255, 255, 0.1)" stroke="rgba(255, 191, 0, 0.4)" stroke-width="1" />
+              <circle id="user-node" cx="100" cy="100" r="7" fill="#ffffff" stroke="#d97706" stroke-width="2" filter="url(#shadow)" />
+            </g>
+
+            <!-- Dynamic Overlay Warning text indicating Out of Feasible bounds -->
+            <g id="warning-text-group" class="opacity-0 transition-opacity duration-200">
+              <rect x="150" y="200" width="200" height="40" rx="10" fill="#781a1a" stroke="#ef4444" stroke-width="1.5" />
+              <text x="250" y="224" text-anchor="middle" class="fill-white font-bold text-[11px] tracking-wide font-sans">⚠️ BOUNDS EXCEEDED!</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Educational Reveal Optimal Solution Block -->
+        <div class="mt-4 bg-stone-950 border border-stone-850 rounded-xl p-4">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-1 flex items-center">
+                <span><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1.5"></i> Optimal Strategy Desk</span>
+              </h4>
+              <p class="text-xs text-stone-400">Reveal the mathematically calculated maximum profit mix for the active constraints.</p>
+            </div>
+            <button id="btn-reveal-opt" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 font-extrabold text-xs tracking-wider rounded-lg shadow-lg transition active:scale-[0.98] flex items-center gap-2">
+              <i class="fa-solid fa-eye"></i> Reveal Optimal Solution
+            </button>
+          </div>
+
+          <!-- Slide-out Optimal Stats (Hidden until Revealed) -->
+          <div id="reveal-stats-block" class="hidden mt-4 pt-4 border-t border-stone-850 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="p-2.5 bg-stone-900 border border-stone-850 rounded-lg text-center">
+              <span class="text-[9px] font-bold text-stone-500 uppercase block">Optimal Light Roast (x₁)</span>
+              <span id="opt-val-x1" class="text-sm font-mono font-bold text-amber-400 mt-1 block">---</span>
+            </div>
+            <div class="p-2.5 bg-stone-900 border border-stone-850 rounded-lg text-center">
+              <span class="text-[9px] font-bold text-stone-500 uppercase block">Optimal Medium Roast (x₂)</span>
+              <span id="opt-val-x2" class="text-sm font-mono font-bold text-amber-400 mt-1 block">---</span>
+            </div>
+            <div class="p-2.5 bg-stone-900 border border-stone-850 rounded-lg text-center">
+              <span class="text-[9px] font-bold text-stone-500 uppercase block">Max Possible Profit</span>
+              <span id="opt-val-profit" class="text-sm font-mono font-bold text-emerald-400 mt-1 block">---</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Tutorial modal -->
+  <div id="tutorial-modal" class="fixed inset-0 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="bg-stone-850 p-5 border-b border-stone-800 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-stone-100 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-amber-400"></i> Linear Programming (LP) Fundamentals
+        </h3>
+        <button id="btn-close-modal" class="text-stone-400 hover:text-stone-200 transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5 text-sm text-stone-300 leading-relaxed">
+        <div>
+          <h4 class="text-white font-bold mb-1.5">What is Linear Programming?</h4>
+          <p>
+            Linear Programming is a mathematical modeling technique used to allocate limited resources optimally among competing activities. In our espresso roaster lab, the objective is to maximize the **Total Operational Profit function ($Z$)**:
+          </p>
+          <div class="bg-stone-950 p-3 rounded-xl text-center font-mono text-amber-400 border border-stone-850 my-2 text-sm">
+            Maximize: Z = P₁x₁ + P₂x₂
+          </div>
+          <p>where $x_1$ represents bags of Light Roast coffee ($6 profit) and $x_2$ represents bags of Medium Roast coffee ($8 profit).</p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">The Extreme Point Theorem</h4>
+          <p>
+            The fundamental theorem of linear programming states that if an optimal solution exists for a bounded feasible region, it **must occur at one of the corner points (vertices)** of that region! This is why the legendary **Simplex Algorithm** works—it traverses corner points sequentially, finding the optimal vertex in minimal steps.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold mb-1.5">Coffee Shop Limits (Constraints)</h4>
+          <p>Our coffee shop is bound by physical operations parameters:</p>
+          <ul class="list-disc list-inside space-y-2 pl-2 text-xs text-stone-400 mt-1">
+            <li><strong>Kiln Resource Constraint:</strong> Roasting beans requires heating energy. Light Roast takes 12 units of kiln time, and Medium Roast takes 18. <span class="text-orange-400 font-mono">12x₁ + 18x₂ ≤ 3000</span></li>
+            <li><strong>Raw Bean Constraint:</strong> Supply stock is limited. Medium Roast takes slightly more green beans to roast deeper. <span class="text-green-400 font-mono">1.00x₁ + 1.05x₂ ≤ 205</span></li>
+            <li><strong>Labour Constraint:</strong> Operational staffing hours. Light Roast takes 2.0 hours of craft labour per bag, and Medium Roast takes 3.0. <span class="text-blue-400 font-mono">2.00x₁ + 3.00x₂ ≤ 500</span></li>
+          </ul>
+        </div>
+
+        <div class="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4">
+          <h5 class="text-amber-400 font-bold mb-1">Sensitivity Analysis Hint</h5>
+          <p class="text-xs text-stone-300">
+            Open the **Adjust Coefficients** tab in the main view! If you increase the unit profit of Light Roast, the yellow "Iso-Profit Line" shifts its slope. You can watch the optimal intersection point jump from one extreme vertex to another in real-time!
+          </p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-stone-850 p-4 border-t border-stone-800 text-right">
+        <button id="btn-close-modal-footer" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold rounded-lg transition">
+          Start Optimizing!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-stone-950 border-t border-stone-900 py-4 px-6 text-center text-xs text-stone-500 shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>&copy; 2026 Espresso LP Optimizer. Interactive operations research lab.</p>
+      <div class="flex gap-4">
+        <span class="hover:text-stone-400 transition cursor-help"><i class="fa-solid fa-graduation-cap text-amber-500 mr-1"></i> Operations Research & Simplex Optimization</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --- DECISION STATE VARIABLES ---
+    let state = {
+      x1: 100, // Light Roast bags
+      x2: 100, // Medium Roast bags
+      p1: 6.0, // Unit profit Light
+      p2: 8.0, // Unit profit Medium
+      kilnCap: 3000,
+      beansCap: 205,
+      labourCap: 500,
+      // Coefficients per unit
+      k1: 12, // kiln light
+      k2: 18, // kiln medium
+      b1: 1.0, // beans light
+      b2: 1.05, // beans medium
+      l1: 2.0, // labour light
+      l2: 3.0, // labour medium
+      
+      // Active states for individual constraints
+      kilnActive: true,
+      beansActive: true,
+      labourActive: true,
+      
+      // Reveal state
+      optimumRevealed: false
+    };
+
+    let attempts = {
+      last: { x1: null, x2: null, profit: null },
+      best: { x1: null, x2: null, profit: null }
+    };
+
+    // Graph scale properties
+    const GRAPH_DIM = 500;
+    const SVG_PADDING = 0; // Standard layout mapping
+    let maxMathX = 260; // Auto-calculated based on parameters
+    let maxMathY = 220;
+
+    // --- DOM REFERENCES ---
+    const sliderX1 = document.getElementById('slider-x1');
+    const sliderX2 = document.getElementById('slider-x2');
+    const valX1 = document.getElementById('val-x1');
+    const valX2 = document.getElementById('val-x2');
+
+    const scoreProfit = document.getElementById('score-profit');
+    const scoreLastProfit = document.getElementById('score-last-profit');
+    const scoreLastMix = document.getElementById('score-last-mix');
+    const scoreBestProfit = document.getElementById('score-best-profit');
+    const scoreBestMix = document.getElementById('score-best-mix');
+
+    const kilnUsageText = document.getElementById('kiln-usage');
+    const kilnCapText = document.getElementById('kiln-capacity');
+    const barKiln = document.getElementById('bar-kiln');
+
+    const beansUsageText = document.getElementById('beans-usage');
+    const beansCapText = document.getElementById('beans-capacity');
+    const barBeans = document.getElementById('bar-beans');
+
+    const labourUsageText = document.getElementById('labour-usage');
+    const labourCapText = document.getElementById('labour-capacity');
+    const barLabour = document.getElementById('bar-labour');
+
+    const toggleKiln = document.getElementById('toggle-kiln');
+    const toggleBeans = document.getElementById('toggle-beans');
+    const toggleLabour = document.getElementById('toggle-labour');
+
+    const containerBarKiln = document.getElementById('container-bar-kiln');
+    const containerBarBeans = document.getElementById('container-bar-beans');
+    const containerBarLabour = document.getElementById('container-bar-labour');
+
+    const badgeFeasibility = document.getElementById('badge-feasibility');
+    const gradingFeedback = document.getElementById('grading-feedback');
+
+    // Advanced inputs
+    const paramP1 = document.getElementById('param-p1');
+    const paramP2 = document.getElementById('param-p2');
+    const paramKCap = document.getElementById('param-k-cap');
+    const paramBCap = document.getElementById('param-b-cap');
+    const paramLCap = document.getElementById('param-l-cap');
+
+    const eqKCap = document.getElementById('eq-k-cap');
+    const eqBCap = document.getElementById('eq-b-cap');
+    const eqLCap = document.getElementById('eq-l-cap');
+
+    const advancedPanel = document.getElementById('advanced-panel');
+    const advancedChevron = document.getElementById('advanced-chevron');
+    const btnToggleAdvanced = document.getElementById('btn-toggle-advanced');
+    const btnResetParams = document.getElementById('btn-reset-params');
+
+    const btnSave = document.getElementById('btn-save');
+    const btnSimplex = document.getElementById('btn-simplex');
+
+    const btnRevealOpt = document.getElementById('btn-reveal-opt');
+    const revealStatsBlock = document.getElementById('reveal-stats-block');
+    const optValX1 = document.getElementById('opt-val-x1');
+    const optValX2 = document.getElementById('opt-val-x2');
+    const optValProfit = document.getElementById('opt-val-profit');
+
+    // SVG elements
+    const lpSvg = document.getElementById('lp-svg');
+    const lineKiln = document.getElementById('line-kiln');
+    const lineBeans = document.getElementById('line-beans');
+    const lineLabour = document.getElementById('line-labour');
+    const lineIsoprofit = document.getElementById('line-isoprofit');
+    const svgFeasibleArea = document.getElementById('svg-feasible-area');
+    const userNodeGroup = document.getElementById('user-node-group');
+    const userNode = document.getElementById('user-node');
+    const userNodeOuter = document.getElementById('user-node-outer');
+    const warningTextGroup = document.getElementById('warning-text-group');
+
+    const optimalTargetGlow = document.getElementById('optimal-target-glow');
+    const optimalTargetStar = document.getElementById('optimal-target-star');
+
+    const svgAxisLabelsX = document.getElementById('svg-axis-labels-x');
+    const svgAxisLabelsY = document.getElementById('svg-axis-labels-y');
+
+    const hudX1 = document.getElementById('hud-x1');
+    const hudX2 = document.getElementById('hud-x2');
+    const hudProfit = document.getElementById('hud-profit');
+
+    const simplexGlow = document.getElementById('simplex-glow');
+    const simplexMarker = document.getElementById('simplex-marker');
+
+    const tutorialModal = document.getElementById('tutorial-modal');
+    const btnTutorial = document.getElementById('btn-tutorial');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
+
+    // --- MATHEMATICAL COORDINATE TRANSLATION ---
+
+    function updateLimits() {
+      // Find intersections with axes dynamically to rescale graph bounds
+      const kilnXInt = state.kilnActive ? (state.kilnCap / state.k1) : 0;
+      const kilnYInt = state.kilnActive ? (state.kilnCap / state.k2) : 0;
+
+      const beansXInt = state.beansActive ? (state.beansCap / state.b1) : 0;
+      const beansYInt = state.beansActive ? (state.beansCap / state.b2) : 0;
+
+      const labourXInt = state.labourActive ? (state.labourCap / state.l1) : 0;
+      const labourYInt = state.labourActive ? (state.labourCap / state.l2) : 0;
+
+      // Filter limits that are active
+      const limitsX = [kilnXInt, beansXInt, labourXInt].filter(val => val > 0);
+      const limitsY = [kilnYInt, beansYInt, labourYInt].filter(val => val > 0);
+
+      const maxX = limitsX.length > 0 ? Math.max(...limitsX) : 250;
+      const maxY = limitsY.length > 0 ? Math.max(...limitsY) : 220;
+
+      maxMathX = maxX * 1.15;
+      maxMathY = maxY * 1.15;
+
+      // Re-render coordinate labels
+      renderAxisLabels();
+    }
+
+    // Translates mathematical coordinates (x1, x2) to SVG pixels
+    function mathToSvg(mX, mY) {
+      const sX = (mX / maxMathX) * GRAPH_DIM;
+      const sY = GRAPH_DIM - (mY / maxMathY) * GRAPH_DIM;
+      return { x: sX, y: sY };
+    }
+
+    // Translates SVG pixels back to closest math integer coordinates
+    function svgToMath(sX, sY) {
+      let mX = (sX / GRAPH_DIM) * maxMathX;
+      let mY = ((GRAPH_DIM - sY) / GRAPH_DIM) * maxMathY;
+      
+      // Boundary clamping
+      mX = Math.max(0, Math.min(maxMathX, Math.round(mX)));
+      mY = Math.max(0, Math.min(maxMathY, Math.round(mY)));
+      return { x1: mX, x2: mY };
+    }
+
+    function renderAxisLabels() {
+      svgAxisLabelsX.innerHTML = '';
+      svgAxisLabelsY.innerHTML = '';
+
+      const stepsX = 6;
+      for (let i = 0; i <= stepsX; i++) {
+        const val = Math.round((i / stepsX) * maxMathX);
+        const pos = mathToSvg(val, 0);
+        
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', pos.x);
+        text.setAttribute('y', '468');
+        text.setAttribute('text-anchor', 'middle');
+        text.textContent = val;
+        svgAxisLabelsX.appendChild(text);
+      }
+
+      const stepsY = 6;
+      for (let i = 0; i <= stepsY; i++) {
+        const val = Math.round((i / stepsY) * maxMathY);
+        const pos = mathToSvg(0, val);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '-12');
+        text.setAttribute('y', pos.y + 4);
+        text.setAttribute('text-anchor', 'end');
+        text.textContent = val;
+        svgAxisLabelsY.appendChild(text);
+      }
+    }
+
+    // --- FEASIBILITY ANALYSIS & GRADIENTS ---
+
+    function evaluateFeasibility(x1, x2) {
+      const kilnUsed = state.k1 * x1 + state.k2 * x2;
+      const beansUsed = state.b1 * x1 + state.b2 * x2;
+      const labourUsed = state.l1 * x1 + state.l2 * x2;
+      
+      let isFeasible = true;
+      if (state.kilnActive && kilnUsed > state.kilnCap) isFeasible = false;
+      if (state.beansActive && beansUsed > state.beansCap) isFeasible = false;
+      if (state.labourActive && labourUsed > state.labourCap) isFeasible = false;
+
+      return { isFeasible, kilnUsed, beansUsed, labourUsed };
+    }
+
+    // Solve exact corner vertices of the bounded feasible region polygon
+    function calculateCorners() {
+      // Define all active half-planes/lines
+      let lines = [
+        { a: 1, b: 0, c: 0, type: 'x-axis' }, // x1 = 0
+        { a: 0, b: 1, c: 0, type: 'y-axis' }  // x2 = 0
+      ];
+
+      if (state.kilnActive) lines.push({ a: state.k1, b: state.k2, c: state.kilnCap, type: 'kiln' });
+      if (state.beansActive) lines.push({ a: state.b1, b: state.b2, c: state.beansCap, type: 'beans' });
+      if (state.labourActive) lines.push({ a: state.l1, b: state.l2, c: state.labourCap, type: 'labour' });
+
+      // Find intersection points of any pair of boundaries
+      let points = [];
+      
+      function getIntersection(l1, l2) {
+        let D = l1.a * l2.b - l1.b * l2.a;
+        if (Math.abs(D) < 0.0001) return null; // Parallel lines
+        let x1 = (l1.c * l2.b - l1.b * l2.c) / D;
+        let x2 = (l1.a * l2.c - l1.c * l2.a) / D;
+        return { x1, x2 };
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        for (let j = i + 1; j < lines.length; j++) {
+          let pt = getIntersection(lines[i], lines[j]);
+          if (pt) {
+            // Check if within non-negativity parameters and constraints
+            if (pt.x1 >= -0.01 && pt.x2 >= -0.01) {
+              const check = evaluateFeasibility(pt.x1, pt.x2);
+              if (check.isFeasible) {
+                // Deduplicate
+                if (!points.some(p => Math.abs(p.x1 - pt.x1) < 0.05 && Math.abs(p.x2 - pt.x2) < 0.05)) {
+                  points.push(pt);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Sort points circularly around their centroid to form a readable polygon
+      if (points.length > 2) {
+        let cx = points.reduce((sum, p) => sum + p.x1, 0) / points.length;
+        let cy = points.reduce((sum, p) => sum + p.x2, 0) / points.length;
+        points.sort((p1, p2) => {
+          let a1 = Math.atan2(p1.x2 - cy, p1.x1 - cx);
+          let a2 = Math.atan2(p2.x2 - cy, p2.x1 - cx);
+          return a1 - a2;
+        });
+      }
+
+      return points;
+    }
+
+    function updateUI() {
+      // 1. Math Evaluation
+      const profit = state.p1 * state.x1 + state.p2 * state.x2;
+      const { isFeasible, kilnUsed, beansUsed, labourUsed } = evaluateFeasibility(state.x1, state.x2);
+
+      // Sliders & Values
+      sliderX1.value = state.x1;
+      sliderX2.value = state.x2;
+      valX1.textContent = state.x1;
+      valX2.textContent = state.x2;
+
+      // Update HUD Values
+      hudX1.textContent = state.x1;
+      hudX2.textContent = state.x2;
+      hudProfit.textContent = `$${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // Main scoreboard
+      scoreProfit.textContent = `$${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      
+      // Handle feasibility color badging
+      if (isFeasible) {
+        badgeFeasibility.textContent = 'Feasible';
+        badgeFeasibility.className = 'bg-stone-800 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold';
+        warningTextGroup.classList.add('opacity-0');
+        scoreProfit.classList.remove('text-rose-500');
+        scoreProfit.classList.add('text-white');
+      } else {
+        badgeFeasibility.textContent = 'Infeasible';
+        badgeFeasibility.className = 'bg-rose-950/40 text-rose-400 border border-rose-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold';
+        warningTextGroup.classList.remove('opacity-0');
+        scoreProfit.classList.remove('text-white');
+        scoreProfit.classList.add('text-rose-500');
+      }
+
+      // Constraints capacity utilization & toggle visibility
+      if (state.kilnActive) {
+        containerBarKiln.style.opacity = '1';
+        kilnUsageText.textContent = Math.round(kilnUsed);
+        kilnCapText.textContent = state.kilnCap;
+        const kilnPct = Math.min(100, (kilnUsed / state.kilnCap) * 100);
+        barKiln.style.width = `${kilnPct}%`;
+        barKiln.className = kilnUsed > state.kilnCap ? "bg-rose-500 h-full transition-all duration-150" : "bg-orange-500 h-full transition-all duration-150";
+        lineKiln.style.opacity = '1';
+      } else {
+        containerBarKiln.style.opacity = '0.3';
+        kilnUsageText.textContent = '---';
+        barKiln.style.width = `0%`;
+        lineKiln.style.opacity = '0';
+      }
+
+      if (state.beansActive) {
+        containerBarBeans.style.opacity = '1';
+        beansUsageText.textContent = beansUsed.toFixed(1);
+        beansCapText.textContent = state.beansCap;
+        const beansPct = Math.min(100, (beansUsed / state.beansCap) * 100);
+        barBeans.style.width = `${beansPct}%`;
+        barBeans.className = beansUsed > state.beansCap ? "bg-rose-500 h-full transition-all duration-150" : "bg-green-500 h-full transition-all duration-150";
+        lineBeans.style.opacity = '1';
+      } else {
+        containerBarBeans.style.opacity = '0.3';
+        beansUsageText.textContent = '---';
+        barBeans.style.width = `0%`;
+        lineBeans.style.opacity = '0';
+      }
+
+      if (state.labourActive) {
+        containerBarLabour.style.opacity = '1';
+        labourUsageText.textContent = Math.round(labourUsed);
+        labourCapText.textContent = state.labourCap;
+        const labourPct = Math.min(100, (labourUsed / state.labourCap) * 100);
+        barLabour.style.width = `${labourPct}%`;
+        barLabour.className = labourUsed > state.labourCap ? "bg-rose-500 h-full transition-all duration-150" : "bg-blue-500 h-full transition-all duration-150";
+        lineLabour.style.opacity = '1';
+      } else {
+        containerBarLabour.style.opacity = '0.3';
+        labourUsageText.textContent = '---';
+        barLabour.style.width = `0%`;
+        lineLabour.style.opacity = '0';
+      }
+
+      // 2. SVG Geometry rendering
+      const nodePos = mathToSvg(state.x1, state.x2);
+      userNode.setAttribute('cx', nodePos.x);
+      userNode.setAttribute('cy', nodePos.y);
+      userNodeOuter.setAttribute('cx', nodePos.x);
+      userNodeOuter.setAttribute('cy', nodePos.y);
+
+      // Render Constraint Lines (Kiln, Beans, Labour)
+      if (state.kilnActive) {
+        const kilnStart = mathToSvg(0, state.kilnCap / state.k2);
+        const kilnEnd = mathToSvg(state.kilnCap / state.k1, 0);
+        lineKiln.setAttribute('x1', kilnStart.x);
+        lineKiln.setAttribute('y1', kilnStart.y);
+        lineKiln.setAttribute('x2', kilnEnd.x);
+        lineKiln.setAttribute('y2', kilnEnd.y);
+      }
+
+      if (state.beansActive) {
+        const beansStart = mathToSvg(0, state.beansCap / state.b2);
+        const beansEnd = mathToSvg(state.beansCap / state.b1, 0);
+        lineBeans.setAttribute('x1', beansStart.x);
+        lineBeans.setAttribute('y1', beansStart.y);
+        lineBeans.setAttribute('x2', beansEnd.x);
+        lineBeans.setAttribute('y2', beansEnd.y);
+      }
+
+      if (state.labourActive) {
+        const labourStart = mathToSvg(0, state.labourCap / state.l2);
+        const labourEnd = mathToSvg(state.labourCap / state.l1, 0);
+        lineLabour.setAttribute('x1', labourStart.x);
+        lineLabour.setAttribute('y1', labourStart.y);
+        lineLabour.setAttribute('x2', labourEnd.x);
+        lineLabour.setAttribute('y2', labourEnd.y);
+      }
+
+      // Render shaded feasible region polygon
+      const polyPoints = calculateCorners();
+      if (polyPoints.length > 0) {
+        const svgPoints = polyPoints.map(p => {
+          let sPos = mathToSvg(p.x1, p.x2);
+          return `${sPos.x},${sPos.y}`;
+        });
+        svgFeasibleArea.setAttribute('points', svgPoints.join(' '));
+      } else {
+        svgFeasibleArea.setAttribute('points', '');
+      }
+
+      // Draw Iso-profit Line passing through current coordinate target
+      const maxIsoX = profit / state.p1;
+      const maxIsoY = profit / state.p2;
+      const isoStart = mathToSvg(0, maxIsoY);
+      const isoEnd = mathToSvg(maxIsoX, 0);
+      lineIsoprofit.setAttribute('x1', isoStart.x);
+      lineIsoprofit.setAttribute('y1', isoStart.y);
+      lineIsoprofit.setAttribute('x2', isoEnd.x);
+      lineIsoprofit.setAttribute('y2', isoEnd.y);
+
+      // 3. Update Reveal state if active
+      if (state.optimumRevealed) {
+        const opt = solveTheoreticalOptimal();
+        optValX1.textContent = `${Math.round(opt.x1)} bags`;
+        optValX2.textContent = `${Math.round(opt.x2)} bags`;
+        optValProfit.textContent = `$${opt.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        // Show star indicator on graph
+        const optPos = mathToSvg(opt.x1, opt.x2);
+        optimalTargetGlow.setAttribute('cx', optPos.x);
+        optimalTargetGlow.setAttribute('cy', optPos.y);
+        optimalTargetGlow.style.opacity = '1';
+        
+        optimalTargetStar.setAttribute('transform', `translate(${optPos.x}, ${optPos.y}) scale(1.8)`);
+        optimalTargetStar.style.opacity = '1';
+      } else {
+        optimalTargetGlow.style.opacity = '0';
+        optimalTargetStar.style.opacity = '0';
+      }
+
+      // Feedback grading logic
+      const theoreticalOptimum = solveTheoreticalOptimal();
+      const currentGrade = profit / theoreticalOptimum.profit;
+
+      if (!isFeasible) {
+        gradingFeedback.innerHTML = `<span class="text-rose-400 font-extrabold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Overloaded Production Mix!</span> Reduce production back to green region.`;
+      } else if (Math.abs(profit - theoreticalOptimum.profit) < 1.0) {
+        gradingFeedback.innerHTML = `<span class="text-emerald-400 font-black"><i class="fa-solid fa-circle-check mr-1"></i> Absolute Optimal Target!</span> You've found the peak optimal profit of $${theoreticalOptimum.profit.toFixed(2)} at (${Math.round(theoreticalOptimum.x1)}, ${Math.round(theoreticalOptimum.x2)})!`;
+      } else if (currentGrade >= 0.9) {
+        gradingFeedback.innerHTML = `<span class="text-amber-400 font-bold">Excellent Mix.</span> You are at ${Math.round(currentGrade*100)}% efficiency! Can you tweak values to reach the absolute vertex optimum?`;
+      } else {
+        gradingFeedback.innerHTML = `You are at <span class="text-stone-300 font-mono font-bold">${Math.round(currentGrade*100)}%</span> of theoretical optimum capacity. Shift sliders closer to bounding intercepts.`;
+      }
+    }
+
+    // Calculate absolute mathematical optimum via vertex enumerations
+    function solveTheoreticalOptimal() {
+      const corners = calculateCorners();
+      let bestPoint = { x1: 0, x2: 0, profit: 0 };
+
+      corners.forEach(pt => {
+        if (pt) {
+          const p = state.p1 * pt.x1 + state.p2 * pt.x2;
+          if (p > bestPoint.profit) {
+            bestPoint = { x1: pt.x1, x2: pt.x2, profit: p };
+          }
+        }
+      });
+
+      return bestPoint;
+    }
+
+    // --- MOUSE & TOUCH INTERACTIVE DRAGGING ---
+    let isDragging = false;
+
+    function handleDragStart(e) {
+      isDragging = true;
+      document.body.style.cursor = 'grabbing';
+    }
+
+    function handleDragMove(e) {
+      if (!isDragging) return;
+
+      const rect = lpSvg.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const svgX = ((clientX - rect.left) / rect.width) * (580 + 50) - 50;
+      const svgY = ((clientY - rect.top) / rect.height) * (520 + 30) - 30;
+
+      const mathPos = svgToMath(svgX, svgY);
+      state.x1 = Math.min(250, mathPos.x1);
+      state.x2 = Math.min(250, mathPos.x2);
+
+      updateUI();
+    }
+
+    function handleDragEnd() {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.cursor = 'default';
+      }
+    }
+
+    // Connect drag listeners
+    userNodeGroup.addEventListener('mousedown', handleDragStart);
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('mouseup', handleDragEnd);
+
+    userNodeGroup.addEventListener('touchstart', handleDragStart, { passive: true });
+    window.addEventListener('touchmove', handleDragMove, { passive: true });
+    window.addEventListener('touchend', handleDragEnd);
+
+    // SLIDER UPDATES
+    sliderX1.addEventListener('input', (e) => {
+      state.x1 = parseInt(e.target.value);
+      updateUI();
+    });
+
+    sliderX2.addEventListener('input', (e) => {
+      state.x2 = parseInt(e.target.value);
+      updateUI();
+    });
+
+    // TOGGLE EVENTS
+    toggleKiln.addEventListener('change', (e) => {
+      state.kilnActive = e.target.checked;
+      updateLimits();
+      updateUI();
+    });
+
+    toggleBeans.addEventListener('change', (e) => {
+      state.beansActive = e.target.checked;
+      updateLimits();
+      updateUI();
+    });
+
+    toggleLabour.addEventListener('change', (e) => {
+      state.labourActive = e.target.checked;
+      updateLimits();
+      updateUI();
+    });
+
+    // REVEAL OPTIMAL EVENT
+    btnRevealOpt.addEventListener('click', () => {
+      state.optimumRevealed = !state.optimumRevealed;
+      if (state.optimumRevealed) {
+        revealStatsBlock.classList.remove('hidden');
+        btnRevealOpt.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide Optimal Solution';
+      } else {
+        revealStatsBlock.classList.add('hidden');
+        btnRevealOpt.innerHTML = '<i class="fa-solid fa-eye"></i> Reveal Optimal Solution';
+      }
+      updateUI();
+    });
+
+    // --- SIMPLEX ANIMATED SOLVER WALK ---
+    function executeSimplexWalk() {
+      const path = calculateCorners();
+      if (path.length === 0) return;
+
+      let step = 0;
+      simplexGlow.classList.remove('opacity-0');
+      simplexMarker.classList.remove('opacity-0');
+
+      btnSimplex.disabled = true;
+      btnSimplex.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Traversing...';
+
+      function walk() {
+        if (step >= path.length) {
+          const opt = solveTheoreticalOptimal();
+          state.x1 = Math.round(opt.x1);
+          state.x2 = Math.round(opt.x2);
+          updateUI();
+
+          setTimeout(() => {
+            simplexGlow.classList.add('opacity-0');
+            simplexMarker.classList.add('opacity-0');
+            btnSimplex.disabled = false;
+            btnSimplex.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Simplex Solver';
+          }, 1000);
+          return;
+        }
+
+        const currentPt = path[step];
+        const sPos = mathToSvg(currentPt.x1, currentPt.x2);
+
+        simplexGlow.setAttribute('cx', sPos.x);
+        simplexGlow.setAttribute('cy', sPos.y);
+        simplexMarker.setAttribute('cx', sPos.x);
+        simplexMarker.setAttribute('cy', sPos.y);
+
+        step++;
+        setTimeout(walk, 900);
+      }
+
+      walk();
+    }
+
+    btnSimplex.addEventListener('click', executeSimplexWalk);
+
+    // --- DECISION RECORD KEEPING (SCOREBOARD LOCKS) ---
+
+    function saveCurrentAttempt() {
+      const { isFeasible } = evaluateFeasibility(state.x1, state.x2);
+      if (!isFeasible) {
+        alert("Cannot record score: Your current production mix is infeasible! Tweak targets to fit inside all active capacity boundaries.");
+        return;
+      }
+
+      const profit = state.p1 * state.x1 + state.p2 * state.x2;
+
+      // Update Last Attempt
+      attempts.last = {
+        x1: state.x1,
+        x2: state.x2,
+        profit: profit
+      };
+
+      scoreLastProfit.textContent = `$${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      scoreLastMix.textContent = `Mix: ${state.x1}L / ${state.x2}M`;
+
+      // Update Best Attempt
+      if (attempts.best.profit === null || profit > attempts.best.profit) {
+        attempts.best = { ...attempts.last };
+        scoreBestProfit.textContent = `$${profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        scoreBestMix.textContent = `Mix: ${state.x1}L / ${state.x2}M`;
+      }
+    }
+
+    btnSave.addEventListener('click', saveCurrentAttempt);
+
+    // --- COEFFS SENSITIVITY AND SENSITIVITY PANELS ---
+
+    // Expandable parameters panel toggle
+    btnToggleAdvanced.addEventListener('click', () => {
+      advancedPanel.classList.toggle('hidden');
+      advancedChevron.classList.toggle('rotate-180');
+    });
+
+    // Update state parameters on input edits
+    function handleParamChange() {
+      state.p1 = parseFloat(paramP1.value) || 0;
+      state.p2 = parseFloat(paramP2.value) || 0;
+      state.kilnCap = parseInt(paramKCap.value) || 0;
+      state.beansCap = parseInt(paramBCap.value) || 0;
+      state.labourCap = parseInt(paramLCap.value) || 0;
+
+      // Update label subtexts on dashboard
+      eqKCap.textContent = state.kilnCap;
+      eqBCap.textContent = state.beansCap;
+      eqLCap.textContent = state.labourCap;
+
+      updateLimits();
+      updateUI();
+    }
+
+    paramP1.addEventListener('input', handleParamChange);
+    paramP2.addEventListener('input', handleParamChange);
+    paramKCap.addEventListener('input', handleParamChange);
+    paramBCap.addEventListener('input', handleParamChange);
+    paramLCap.addEventListener('input', handleParamChange);
+
+    btnResetParams.addEventListener('click', () => {
+      paramP1.value = 6;
+      paramP2.value = 8;
+      paramKCap.value = 3000;
+      paramBCap.value = 205;
+      paramLCap.value = 500;
+      handleParamChange();
+    });
+
+    // --- TUTORIAL MODAL ACTION ---
+    const toggleModal = () => tutorialModal.classList.toggle('hidden');
+    btnTutorial.addEventListener('click', toggleModal);
+    btnCloseModal.addEventListener('click', toggleModal);
+    btnCloseModalFooter.addEventListener('click', toggleModal);
+    tutorialModal.addEventListener('click', (e) => {
+      if (e.target === tutorialModal) toggleModal();
+    });
+
+    // --- INIT ---
+    window.onload = function() {
+      updateLimits();
+      updateUI();
+    };
+
+  </script>
+</body>
+</html>
