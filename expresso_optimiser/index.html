@@ -340,7 +340,7 @@
           </div>
 
           <!-- Main SVG Interactive Canvas -->
-          <svg id="lp-svg" viewBox="-50 -30 580 520" class="w-full h-full max-w-[480px] max-h-[480px] select-none">
+          <svg id="lp-svg" viewBox="-50 -30 580 550" class="w-full h-full max-w-[480px] max-h-[480px] select-none">
             <defs>
               <!-- Grid pattern -->
               <pattern id="grid-pattern" width="50" height="50" patternUnits="userSpaceOnUse">
@@ -364,8 +364,8 @@
             <g id="svg-axis-labels-y" class="text-[11px] font-mono fill-stone-500 select-none"></g>
 
             <!-- Axis Explanations -->
-            <text x="250" y="495" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">X-AXIS: LIGHT ROAST (x₁ bags)</text>
-            <text x="-40" y="225" transform="rotate(-90, -40, 225)" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">Y-AXIS: MEDIUM ROAST (x₂ bags)</text>
+            <text x="250" y="505" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">X-AXIS: LIGHT ROAST (x₁ bags)</text>
+            <text x="-38" y="225" transform="rotate(-90, -38, 225)" text-anchor="middle" class="fill-stone-400 font-bold tracking-wider text-[11px]" pointer-events="none">Y-AXIS: MEDIUM ROAST (x₂ bags)</text>
 
             <!-- Feasible Region Polygon Area -->
             <polygon id="svg-feasible-area" points="" fill="rgba(245, 158, 11, 0.08)" stroke="none" class="transition-all duration-300" />
@@ -532,7 +532,8 @@
     };
 
     // Graph scale properties
-    const GRAPH_DIM = 500;
+    const GRAPH_WIDTH = 500;
+    const GRAPH_HEIGHT = 450;
     let maxMathX = 260; 
     let maxMathY = 220;
 
@@ -655,15 +656,15 @@
 
     // Translates mathematical coordinates (x1, x2) to SVG pixels
     function mathToSvg(mX, mY) {
-      const sX = (mX / maxMathX) * GRAPH_DIM;
-      const sY = GRAPH_DIM - (mY / maxMathY) * GRAPH_DIM;
+      const sX = (mX / maxMathX) * GRAPH_WIDTH;
+      const sY = GRAPH_HEIGHT - (mY / maxMathY) * GRAPH_HEIGHT;
       return { x: sX, y: sY };
     }
 
     // Translates SVG pixels back to closest math integer coordinates
     function svgToMath(sX, sY) {
-      let mX = (sX / GRAPH_DIM) * maxMathX;
-      let mY = ((GRAPH_DIM - sY) / GRAPH_DIM) * maxMathY;
+      let mX = (sX / GRAPH_WIDTH) * maxMathX;
+      let mY = ((GRAPH_HEIGHT - sY) / GRAPH_HEIGHT) * maxMathY;
       
       mX = Math.max(0, Math.min(maxMathX, Math.round(mX)));
       mY = Math.max(0, Math.min(maxMathY, Math.round(mY)));
@@ -681,7 +682,7 @@
         
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', pos.x);
-        text.setAttribute('y', '468');
+        text.setAttribute('y', '470');
         text.setAttribute('text-anchor', 'middle');
         text.textContent = val;
         svgAxisLabelsX.appendChild(text);
@@ -997,7 +998,7 @@
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
       const svgX = ((clientX - rect.left) / rect.width) * (580 + 50) - 50;
-      const svgY = ((clientY - rect.top) / rect.height) * (520 + 30) - 30;
+      const svgY = ((clientY - rect.top) / rect.height) * (550 + 30) - 30;
 
       const mathPos = svgToMath(svgX, svgY);
       state.x1 = Math.min(220, mathPos.x1);
