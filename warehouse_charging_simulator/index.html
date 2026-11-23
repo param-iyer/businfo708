@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warehouse Charging Digital Twin (50m × 50m)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #09090b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+    canvas {
+      touch-action: manipulation;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Top Navigation & Simulation Transport Bar -->
+  <header class="bg-zinc-900/95 border-b border-zinc-800 py-3 px-4 md:px-6 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-[1440px] mx-auto flex flex-col lg:flex-row justify-between items-center gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-cyan-600/20 border border-cyan-500/40 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950/40">
+            <i class="fa-solid fa-warehouse text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-base md:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+              Warehouse Charging Digital Twin
+              <span class="text-[10px] font-mono-tech uppercase px-2 py-0.5 rounded bg-zinc-800 text-cyan-400 border border-zinc-700">50m × 50m</span>
+            </h1>
+            <p class="text-[11px] text-zinc-400">4-Forklift Fleet • Dual Charging Site Optimization & Shift Policy Simulator</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Clock & Playback Controls -->
+      <div class="flex flex-wrap items-center justify-center gap-2 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl w-full lg:w-auto">
+        <!-- Shift Clock -->
+        <div class="flex items-center gap-2 pr-3 border-r border-zinc-800">
+          <i class="fa-regular fa-clock text-cyan-400 text-xs"></i>
+          <div>
+            <span class="text-[9px] uppercase font-bold text-zinc-500 block leading-none">Shift Time</span>
+            <span id="sim-clock" class="font-mono-tech text-sm font-extrabold text-white">00:00 <span class="text-zinc-500 font-normal">/ 08:00</span></span>
+          </div>
+        </div>
+
+        <!-- Play / Pause / Reset -->
+        <button id="btn-play-pause" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow">
+          <i id="icon-play-pause" class="fa-solid fa-play"></i>
+          <span id="text-play-pause">Start Shift</span>
+        </button>
+
+        <button id="btn-reset-sim" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs rounded-lg border border-zinc-700 transition" title="Reset Shift">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+
+        <!-- Speed Multipliers -->
+        <div class="flex items-center bg-zinc-900 rounded-lg p-0.5 border border-zinc-800 ml-1">
+          <button data-speed="1" class="btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold text-zinc-400 hover:text-white">1x</button>
+          <button data-speed="10" class="btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold text-zinc-400 hover:text-white">10x</button>
+          <button data-speed="30" class="btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold bg-cyan-600 text-zinc-950">30x</button>
+          <button data-speed="60" class="btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold text-zinc-400 hover:text-white">60x</button>
+        </div>
+
+        <!-- Batch Policy Benchmark Trigger -->
+        <button id="btn-open-benchmark" class="ml-1 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-bold text-xs rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-flask-vial"></i> Run Policy Benchmark
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Status Toast Banner (Replaces alert()) -->
+  <div id="toast-banner" class="fixed bottom-5 right-5 z-50 hidden bg-zinc-900 border border-cyan-500/50 text-zinc-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs max-w-sm">
+    <i id="toast-icon" class="fa-solid fa-circle-info text-cyan-400 text-base"></i>
+    <span id="toast-msg">Notification</span>
+  </div>
+
+  <!-- Main 3-Column Digital Twin Workspace -->
+  <main class="flex-grow max-w-[1440px] mx-auto w-full p-4 md:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+    <!-- LEFT COLUMN: Charging Infrastructure & Policy Controls (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+
+      <!-- 1. Charging Location & Station Decision Card -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+          <h2 class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-charging-station text-cyan-400"></i> Charging Decision Matrix
+          </h2>
+          <span id="badge-config-code" class="font-mono-tech text-xs font-extrabold px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
+            Config: 11
+          </span>
+        </div>
+
+        <!-- Quick Binary Layout Selector (00, 10, 01, 11) -->
+        <div>
+          <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
+            Location Activation Binary (Loc A, Loc B)
+          </label>
+          <div class="grid grid-cols-4 gap-2">
+            <button data-binary="00" class="btn-binary py-2 rounded-xl border border-zinc-700 bg-zinc-950 hover:bg-zinc-800 text-xs font-mono-tech font-bold text-zinc-400 transition">
+              00<span class="block text-[9px] font-sans font-normal text-zinc-500">None</span>
+            </button>
+            <button data-binary="10" class="btn-binary py-2 rounded-xl border border-zinc-700 bg-zinc-950 hover:bg-zinc-800 text-xs font-mono-tech font-bold text-zinc-400 transition">
+              10<span class="block text-[9px] font-sans font-normal text-zinc-500">Only A</span>
+            </button>
+            <button data-binary="01" class="btn-binary py-2 rounded-xl border border-zinc-700 bg-zinc-950 hover:bg-zinc-800 text-xs font-mono-tech font-bold text-zinc-400 transition">
+              01<span class="block text-[9px] font-sans font-normal text-zinc-500">Only B</span>
+            </button>
+            <button data-binary="11" class="btn-binary py-2 rounded-xl border border-cyan-500 bg-cyan-950/50 text-xs font-mono-tech font-bold text-cyan-300 transition">
+              11<span class="block text-[9px] font-sans font-normal text-cyan-400/80">Both A&B</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Location A & B Station Allocation -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Location A Box -->
+          <div id="card-loc-a" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2.5 transition">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> Location A
+              </span>
+              <input type="checkbox" id="chk-loc-a" checked class="accent-cyan-500 w-4 h-4 cursor-pointer">
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-zinc-400">
+              <span id="coords-loc-a" class="font-mono-tech">(4m, 46m)</span>
+              <button id="btn-move-a" class="text-[10px] text-cyan-400 hover:underline font-semibold">
+                <i class="fa-solid fa-crosshairs mr-0.5"></i> Move
+              </button>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-zinc-400 mb-1">
+                <span>Stations (Ports)</span>
+                <span id="val-stations-a" class="font-mono-tech font-bold text-white">2</span>
+              </div>
+              <input type="range" id="slider-stations-a" min="1" max="4" value="2" class="w-full accent-cyan-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[9px] font-mono-tech text-zinc-500 px-0.5">
+                <span>1</span><span>2</span><span>3</span><span>4</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location B Box -->
+          <div id="card-loc-b" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2.5 transition">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Location B
+              </span>
+              <input type="checkbox" id="chk-loc-b" checked class="accent-amber-500 w-4 h-4 cursor-pointer">
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-zinc-400">
+              <span id="coords-loc-b" class="font-mono-tech">(45m, 5m)</span>
+              <button id="btn-move-b" class="text-[10px] text-amber-400 hover:underline font-semibold">
+                <i class="fa-solid fa-crosshairs mr-0.5"></i> Move
+              </button>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-zinc-400 mb-1">
+                <span>Stations (Ports)</span>
+                <span id="val-stations-b" class="font-mono-tech font-bold text-white">2</span>
+              </div>
+              <input type="range" id="slider-stations-b" min="1" max="4" value="2" class="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[9px] font-mono-tech text-zinc-500 px-0.5">
+                <span>1</span><span>2</span><span>3</span><span>4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setup Cost Summary & Inputs -->
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Infrastructure Setup Cost</span>
+            <span id="disp-total-setup-cost" class="font-mono-tech text-base font-extrabold text-emerald-400">$10,000</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <label class="text-[9px] text-zinc-500 uppercase block">Site Fixed Cost ($)</label>
+              <input type="number" id="input-site-cost" value="3000" step="250" min="0" class="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 font-mono-tech text-zinc-200">
+            </div>
+            <div>
+              <label class="text-[9px] text-zinc-500 uppercase block">Per Station Cost ($)</label>
+              <input type="number" id="input-station-cost" value="1000" step="100" min="0" class="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 font-mono-tech text-zinc-200">
+            </div>
+          </div>
+          <p id="setup-cost-breakdown" class="text-[10px] text-zinc-500 font-mono-tech">
+            2 Sites ($6,000) + 4 Stations ($4,000)
+          </p>
+        </div>
+      </div>
+
+      <!-- 2. Operational & Charging Policy Selector -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-3.5">
+        <h2 class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-800 pb-2">
+          <i class="fa-solid fa-brain text-amber-400"></i> Fleet & Charging Policies
+        </h2>
+
+        <div class="space-y-2.5">
+          <div>
+            <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Charging Trigger Policy</label>
+            <select id="select-charge-policy" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 font-medium focus:border-cyan-500 outline-none">
+              <option value="threshold_25">Threshold Opportunistic (&lt; 25% SoC → Charge to 90%)</option>
+              <option value="critical_15">Critical-Only (&lt; 15% SoC → Charge to 80%)</option>
+              <option value="opportunity_idle">Opportunity Idle Top-Up (Charge when idle &lt; 80%)</option>
+              <option value="staggered_guard">Staggered Fleet Guard (&lt; 30% SoC, Max 2 charging at once)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Station Routing</label>
+              <select id="select-station-routing" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-2 text-xs text-zinc-200 outline-none">
+                <option value="least_congested">Shortest Wait + Travel</option>
+                <option value="nearest">Strictly Nearest Site</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Order Dispatch</label>
+              <select id="select-dispatch-policy" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-2 text-xs text-zinc-200 outline-none">
+                <option value="nearest_forklift">Nearest Available</option>
+                <option value="fifo">Strict FIFO Order</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Shift Orders & Physics Parameters -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <h2 class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-boxes-stacked text-emerald-400"></i> Shift Workload & Physics
+          </h2>
+          <button id="btn-new-orders" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-[10px] font-bold text-cyan-300 transition">
+            <i class="fa-solid fa-shuffle mr-1"></i> New Shift Orders
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5 text-xs">
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[10px] text-zinc-500 block">Shift Orders (8h)</span>
+            <div class="flex items-center justify-between mt-1">
+              <input type="range" id="slider-order-count" min="40" max="160" step="10" value="90" class="w-20 accent-emerald-500 h-1.5 bg-zinc-800 rounded cursor-pointer">
+              <span id="val-order-count" class="font-mono-tech font-bold text-emerald-400">90</span>
+            </div>
+          </div>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[10px] text-zinc-500 block">Charge Time (0→100%)</span>
+            <div class="flex items-center justify-between mt-1">
+              <input type="range" id="slider-charge-mins" min="20" max="90" step="5" value="45" class="w-20 accent-cyan-500 h-1.5 bg-zinc-800 rounded cursor-pointer">
+              <span id="val-charge-mins" class="font-mono-tech font-bold text-cyan-400">45m</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Physics Spec Readout -->
+        <div class="bg-zinc-950/80 border border-zinc-800/80 rounded-xl p-2.5 text-[11px] grid grid-cols-2 gap-y-1.5 gap-x-3 font-mono-tech">
+          <div class="flex justify-between">
+            <span class="text-zinc-500">Full Endurance:</span>
+            <span class="text-amber-300 font-bold">1.0 hr</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-500">Empty Endurance:</span>
+            <span class="text-emerald-300 font-bold">2.0 hrs</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-500">Full Speed:</span>
+            <span class="text-zinc-200">1.2 m/s</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-500">Empty Speed:</span>
+            <span class="text-zinc-200">2.4 m/s</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CENTER COLUMN: 50m x 50m Live Warehouse Digital Twin Canvas (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
+        
+        <!-- Canvas Top Legend -->
+        <div class="w-full flex flex-wrap items-center justify-between gap-2 mb-3 text-[10px]">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1 text-blue-300 font-semibold">
+              <span class="w-2.5 h-2.5 rounded-sm bg-blue-500/40 border border-blue-400 inline-block"></span> Inbound Dock
+            </span>
+            <span class="flex items-center gap-1 text-emerald-300 font-semibold">
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/40 border border-emerald-400 inline-block"></span> Outbound Dock
+            </span>
+            <span class="flex items-center gap-1 text-zinc-400 font-semibold">
+              <span class="w-2.5 h-2.5 rounded-sm bg-zinc-700 border border-zinc-500 inline-block"></span> Racks
+            </span>
+          </div>
+          <span id="placement-hint" class="text-zinc-400 font-mono-tech">
+            Click "Move" to relocate chargers
+          </span>
+        </div>
+
+        <!-- Responsive Square Canvas Container -->
+        <div id="canvas-wrapper" class="relative w-full aspect-square max-w-[540px] bg-zinc-950 rounded-xl border border-zinc-800 overflow-hidden shadow-inner">
+          <canvas id="warehouse-canvas" class="w-full h-full block"></canvas>
+        </div>
+
+        <!-- Bottom Canvas Legend -->
+        <div class="w-full flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-zinc-800 text-[10px] text-zinc-400">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Working</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Loaded Pallet</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span> Charging</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Stranded (0%)</span>
+          </div>
+          <span class="font-mono-tech text-zinc-500">Scale: 1 grid = 5m</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Live Telemetry, Forklift Fleet & Shift KPIs (3 cols) -->
+    <section class="lg:col-span-3 flex flex-col gap-4">
+
+      <!-- 1. Shift KPIs & Performance Scoreboard -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-3.5">
+        <h2 class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-800 pb-2">
+          <i class="fa-solid fa-chart-simple text-emerald-400"></i> Live Shift Telemetry
+        </h2>
+
+        <!-- Primary Throughput Metric -->
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+          <div class="flex justify-between items-baseline">
+            <span class="text-[10px] font-bold text-zinc-400 uppercase">Orders Completed</span>
+            <span id="kpi-completion-pct" class="font-mono-tech text-xs font-bold text-emerald-400">0%</span>
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-orders-done" class="font-mono-tech text-2xl font-black text-white">0 <span class="text-sm font-normal text-zinc-500">/ 90</span></span>
+            <span class="text-[10px] text-zinc-400">Queue: <strong id="kpi-queue-len" class="text-amber-300 font-mono-tech">0</strong></span>
+          </div>
+          <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-2">
+            <div id="kpi-progress-bar" class="bg-emerald-500 h-full w-0 transition-all duration-200"></div>
+          </div>
+        </div>
+
+        <!-- Secondary Metrics Grid -->
+        <div class="grid grid-cols-2 gap-2.5 text-xs">
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase block">Avg Cycle Time</span>
+            <span id="kpi-cycle-time" class="font-mono-tech text-sm font-extrabold text-zinc-200 mt-0.5 block">0.0 min</span>
+          </div>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase block">Charger Wait Time</span>
+            <span id="kpi-wait-time" class="font-mono-tech text-sm font-extrabold text-cyan-300 mt-0.5 block">0.0 min</span>
+          </div>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase block">Empty Travel %</span>
+            <span id="kpi-empty-ratio" class="font-mono-tech text-sm font-extrabold text-amber-300 mt-0.5 block">0%</span>
+          </div>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5">
+            <span class="text-[9px] font-bold text-zinc-500 uppercase block">Dead Battery Events</span>
+            <span id="kpi-stranded" class="font-mono-tech text-sm font-extrabold text-rose-400 mt-0.5 block">0</span>
+          </div>
+        </div>
+
+        <!-- Economic Efficiency Score -->
+        <div class="bg-gradient-to-r from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl p-3">
+          <div class="flex justify-between items-center text-[10px]">
+            <span class="text-zinc-400 font-bold uppercase">Est. Total Shift Cost</span>
+            <span class="text-zinc-500" title="Amortized CapEx ($50/day per $1k) + $15/uncompleted order + $100/stranding">CapEx + Penalty</span>
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-total-cost" class="font-mono-tech text-lg font-black text-white">$500</span>
+            <span id="kpi-in-out-split" class="text-[10px] font-mono-tech text-zinc-400">In: 0 | Out: 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 4-Forklift Live Fleet Status -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-3">
+        <h2 class="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center justify-between border-b border-zinc-800 pb-2">
+          <span><i class="fa-solid fa-truck-ramp-box text-cyan-400 mr-1.5"></i> Forklift Fleet (4)</span>
+          <span class="text-[10px] font-mono-tech text-zinc-500">SoC %</span>
+        </h2>
+
+        <div id="fleet-cards-container" class="space-y-2.5">
+          <!-- Dynamically populated for FL-1 .. FL-4 -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Policy & Configuration Benchmark Modal -->
+  <div id="benchmark-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="bg-zinc-950 px-5 py-4 border-b border-zinc-800 flex justify-between items-center">
+        <div>
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <i class="fa-solid fa-flask-vial text-amber-400"></i> Multi-Scenario & Policy Benchmark
+          </h3>
+          <p class="text-xs text-zinc-400">Simulates the full 8-hour shift across charger layouts & policies using the exact same order stream.</p>
+        </div>
+        <button id="btn-close-benchmark" class="text-zinc-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Controls -->
+      <div class="p-4 bg-zinc-900 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-zinc-400 font-semibold">Compare Mode:</span>
+          <select id="select-benchmark-mode" class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200">
+            <option value="layouts">Layouts (00, 10, 01, 11) under Current Policy</option>
+            <option value="policies">All 4 Charging Policies under Current Layout</option>
+            <option value="stations">Station Counts (1 to 4 ports) under Current Layout</option>
+          </select>
+        </div>
+        <button id="btn-run-batch" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-extrabold text-xs rounded-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-bolt"></i> Run Full-Shift Simulations
+        </button>
+      </div>
+
+      <!-- Results Table -->
+      <div class="p-4 overflow-y-auto flex-grow">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-zinc-950 text-zinc-400 uppercase font-mono-tech text-[10px] border-b border-zinc-800">
+            <tr>
+              <th class="py-2.5 px-3">Scenario / Policy</th>
+              <th class="py-2.5 px-3">Setup Cost</th>
+              <th class="py-2.5 px-3">Orders Done</th>
+              <th class="py-2.5 px-3">Avg Cycle</th>
+              <th class="py-2.5 px-3">Charger Wait</th>
+              <th class="py-2.5 px-3">Empty Dist %</th>
+              <th class="py-2.5 px-3">Stranded</th>
+              <th class="py-2.5 px-3">Est. Shift Cost</th>
+            </tr>
+          </thead>
+          <tbody id="benchmark-table-body" class="divide-y divide-zinc-800 font-mono-tech">
+            <tr>
+              <td colspan="8" class="py-8 text-center text-zinc-500 font-sans">
+                Click <strong>Run Full-Shift Simulations</strong> to evaluate candidate arrangements and policies.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-zinc-950 px-5 py-3 border-t border-zinc-800 flex justify-between items-center text-[11px] text-zinc-500">
+        <span>Est. Shift Cost = (Setup Cost × 5% Daily Amortization) + ($15 × Uncompleted Orders) + ($100 × Dead Battery Events)</span>
+        <button id="btn-close-benchmark-2" class="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * WAREHOUSE CHARGING DIGITAL TWIN ENGINE (50m x 50m)
+     * ============================================================================
+     * Models a 50m x 50m grid with A* obstacle pathfinding, 4 forklifts,
+     * inbound/outbound pallet orders, battery drain (1h full vs 2h empty),
+     * and configurable dual charging locations & policies.
+     */
+
+    // --- 1. WAREHOUSE GEOMETRY & GRID CONSTANTS ---
+    const GRID_SIZE = 50; // 50m x 50m (each cell = 1m x 1m)
+    const CELL_EMPTY = 0;
+    const CELL_RACK = 1;
+    const CELL_INBOUND = 2;
+    const CELL_OUTBOUND = 3;
+
+    // Build static 50x50 floorplan grid & extract valid rack access points and dock bays
+    const warehouseGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(CELL_EMPTY));
+    const inboundDocks = [];
+    const outboundDocks = [];
+    const rackAccessPoints = [];
+
+    function initWarehouseLayout() {
+      // Clear grid
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          warehouseGrid[y][x] = CELL_EMPTY;
+        }
+      }
+      inboundDocks.length = 0;
+      outboundDocks.length = 0;
+      rackAccessPoints.length = 0;
+
+      // 1. Place Inbound Docks along South-West wall (y = 1..2)
+      const inBays = [7, 13, 19];
+      inBays.forEach(bx => {
+        for (let dx = -1; dx <= 1; dx++) {
+          warehouseGrid[1][bx + dx] = CELL_INBOUND;
+          warehouseGrid[2][bx + dx] = CELL_INBOUND;
+        }
+        inboundDocks.push({ x: bx, y: 3 }); // Staging pickup tile right in front of dock
+      });
+
+      // 2. Place Outbound Docks along South-East wall (y = 1..2)
+      const outBays = [30, 36, 42];
+      outBays.forEach(bx => {
+        for (let dx = -1; dx <= 1; dx++) {
+          warehouseGrid[1][bx + dx] = CELL_OUTBOUND;
+          warehouseGrid[2][bx + dx] = CELL_OUTBOUND;
+        }
+        outboundDocks.push({ x: bx, y: 3 }); // Staging dropoff tile right in front of dock
+      });
+
+      // 3. Place 8 Double-Sided Storage Rack Blocks (2 rows x 4 columns)
+      // Leaving wide perimeter aisles (x=1..4, x=45..48, y=4..8, y=43..48) and central cross-aisles (x=22..27, y=23..26)
+      const rackCols = [
+        { x1: 6, x2: 10 },
+        { x1: 15, x2: 19 },
+        { x1: 30, x2: 34 },
+        { x1: 39, x2: 43 }
+      ];
+      const rackRows = [
+        { y1: 10, y2: 21 },
+        { y1: 28, y2: 40 }
+      ];
+
+      rackRows.forEach(row => {
+        rackCols.forEach(col => {
+          for (let y = row.y1; y <= row.y2; y++) {
+            for (let x = col.x1; x <= col.x2; x++) {
+              warehouseGrid[y][x] = CELL_RACK;
+            }
+            // Register adjacent aisle access points along left & right faces of the rack
+            if (y % 2 === 0) {
+              rackAccessPoints.push({ x: col.x1 - 1, y, rackX: col.x1, rackY: y });
+              rackAccessPoints.push({ x: col.x2 + 1, y, rackX: col.x2, rackY: y });
+            }
+          }
+        });
+      });
+    }
+
+    initWarehouseLayout();
+
+    // --- 2. A* PATHFINDING WITH MEMOIZATION ---
+    const pathCache = new Map();
+
+    function findPathAStar(startX, startY, goalX, goalY) {
+      const sx = Math.max(0, Math.min(49, Math.round(startX)));
+      const sy = Math.max(0, Math.min(49, Math.round(startY)));
+      const gx = Math.max(0, Math.min(49, Math.round(goalX)));
+      const gy = Math.max(0, Math.min(49, Math.round(goalY)));
+
+      if (sx === gx && sy === gy) return [{ x: gx, y: gy }];
+
+      const cacheKey = `${sx},${sy}>${gx},${gy}`;
+      if (pathCache.has(cacheKey)) {
+        return pathCache.get(cacheKey).map(pt => ({ x: pt.x, y: pt.y }));
+      }
+
+      const openSet = [{ x: sx, y: sy, g: 0, f: Math.abs(gx - sx) + Math.abs(gy - sy) }];
+      const cameFrom = new Map();
+      const gScore = new Map();
+      const startKey = `${sx},${sy}`;
+      gScore.set(startKey, 0);
+
+      const dirs = [
+        { dx: 1, dy: 0 },
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 },
+        { dx: 0, dy: -1 }
+      ];
+
+      let iterations = 0;
+      while (openSet.length > 0 && iterations < 4000) {
+        iterations++;
+        // Pop node with lowest f score
+        let bestIdx = 0;
+        for (let i = 1; i < openSet.length; i++) {
+          if (openSet[i].f < openSet[bestIdx].f) bestIdx = i;
+        }
+        const current = openSet.splice(bestIdx, 1)[0];
+        const currKey = `${current.x},${current.y}`;
+
+        if (current.x === gx && current.y === gy) {
+          // Reconstruct path
+          const totalPath = [{ x: gx, y: gy }];
+          let traceKey = currKey;
+          while (cameFrom.has(traceKey)) {
+            const prev = cameFrom.get(traceKey);
+            totalPath.unshift(prev);
+            traceKey = `${prev.x},${prev.y}`;
+          }
+          // Simplify collinear waypoints for smooth travel
+          const simplified = simplifyPath(totalPath);
+          pathCache.set(cacheKey, simplified);
+          return simplified.map(pt => ({ x: pt.x, y: pt.y }));
+        }
+
+        for (const d of dirs) {
+          const nx = current.x + d.dx;
+          const ny = current.y + d.dy;
+          if (nx < 1 || nx > 48 || ny < 1 || ny > 48) continue;
+          // Allow stepping onto goal even if adjacent to dock, disallow racks
+          if (warehouseGrid[ny][nx] === CELL_RACK && !(nx === gx && ny === gy)) continue;
+
+          const neighborKey = `${nx},${ny}`;
+          const tentativeG = current.g + 1;
+          if (!gScore.has(neighborKey) || tentativeG < gScore.get(neighborKey)) {
+            cameFrom.set(neighborKey, { x: current.x, y: current.y });
+            gScore.set(neighborKey, tentativeG);
+            const h = Math.abs(gx - nx) + Math.abs(gy - ny);
+            openSet.push({ x: nx, y: ny, g: tentativeG, f: tentativeG + h });
+          }
+        }
+      }
+
+      // Direct fallback
+      return [{ x: gx, y: gy }];
+    }
+
+    function simplifyPath(points) {
+      if (points.length <= 2) return points;
+      const result = [points[0]];
+      for (let i = 1; i < points.length - 1; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const next = points[i + 1];
+        const dx1 = curr.x - prev.x;
+        const dy1 = curr.y - prev.y;
+        const dx2 = next.x - curr.x;
+        const dy2 = next.y - curr.y;
+        if (dx1 !== dx2 || dy1 !== dy2) {
+          result.push(curr);
+        }
+      }
+      result.push(points[points.length - 1]);
+      return result;
+    }
+
+    // --- 3. CONFIGURATION & SIMULATION STATE ---
+    const config = {
+      locA: { active: true, x: 4, y: 46, stations: 2 },
+      locB: { active: true, x: 45, y: 5, stations: 2 },
+      siteSetupCost: 3000,
+      stationUnitCost: 1000,
+      chargePolicy: 'threshold_25',
+      stationRouting: 'least_congested',
+      dispatchPolicy: 'nearest_forklift',
+      orderCount: 90,
+      chargeDurationMins: 45, // 0% to 100% in 45 min
+      shiftDurationSec: 8 * 3600, // 8 hours
+      // Physics constants (as specified by user)
+      speedEmpty: 2.4, // m/s
+      speedFull: 1.2,  // m/s (half of empty speed)
+      drainRateFullPerSec: 100 / 3600,  // lasts 1 full hour (3600s) when moving full
+      drainRateEmptyPerSec: 100 / 7200, // lasts 2 full hours (7200s) when moving empty (half of full)
+      drainRateIdlePerSec: 100 / 72000, // minimal standby drain
+      handlingTimeSec: 20 // 20s to pick or drop a pallet
+    };
+
+    let simState = {
+      running: false,
+      speedMultiplier: 30,
+      elapsedSec: 0,
+      orderSeed: 42,
+      movingLocationTarget: null, // 'A' or 'B' when user clicks Move on floorplan
+      forklifts: [],
+      orders: [],
+      metrics: null
+    };
+
+    // Deterministic Pseudo-Random Number Generator (Mulberry32) so policies can be compared fairly
+    function createRNG(seed) {
+      let a = seed >>> 0;
+      return function() {
+        a |= 0;
+        a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateShiftOrders(seed, count, shiftSec) {
+      const rng = createRNG(seed);
+      const list = [];
+      for (let i = 0; i < count; i++) {
+        // Stagger arrivals across the first 7.5 hours of the 8-hour shift
+        const arrivalSec = Math.floor(rng() * (shiftSec - 1800));
+        const type = rng() < 0.5 ? 'INBOUND' : 'OUTBOUND';
+        const dock = type === 'INBOUND'
+          ? inboundDocks[Math.floor(rng() * inboundDocks.length)]
+          : outboundDocks[Math.floor(rng() * outboundDocks.length)];
+        const rack = rackAccessPoints[Math.floor(rng() * rackAccessPoints.length)];
+
+        list.push({
+          id: i + 1,
+          type,
+          arrivalSec,
+          pickup: type === 'INBOUND' ? { x: dock.x, y: dock.y } : { x: rack.x, y: rack.y },
+          dropoff: type === 'INBOUND' ? { x: rack.x, y: rack.y } : { x: dock.x, y: dock.y },
+          status: 'PENDING', // PENDING, ASSIGNED, COMPLETED
+          assignedTo: null,
+          completedSec: null
+        });
+      }
+      return list.sort((a, b) => a.arrivalSec - b.arrivalSec);
+    }
+
+    function createInitialSimulation(customConfig = config) {
+      const startSpots = [
+        { x: 10, y: 6 },
+        { x: 20, y: 6 },
+        { x: 30, y: 6 },
+        { x: 40, y: 6 }
+      ];
+
+      const forklifts = startSpots.map((pos, idx) => ({
+        id: `FL-${idx + 1}`,
+        index: idx,
+        x: pos.x,
+        y: pos.y,
+        angle: 0,
+        soc: 100.0, // Start shift at 100% charge
+        loaded: false,
+        state: 'IDLE', // IDLE, TO_PICKUP, HANDLING_PICK, TO_DROPOFF, HANDLING_DROP, TO_CHARGER, CHARGING, QUEUED_CHARGER, STRANDED
+        waypoints: [],
+        currentOrder: null,
+        targetCharger: null, // 'A' or 'B'
+        handleTimer: 0,
+        distEmpty: 0,
+        distFull: 0,
+        chargeWaitSec: 0,
+        chargingSec: 0,
+        ordersCompleted: 0,
+        strandedCount: 0
+      }));
+
+      const orders = generateShiftOrders(simState.orderSeed, customConfig.orderCount, customConfig.shiftDurationSec);
+
+      return {
+        elapsedSec: 0,
+        forklifts,
+        orders,
+        metrics: {
+          completedOrders: 0,
+          inboundCompleted: 0,
+          outboundCompleted: 0,
+          totalCycleSec: 0,
+          totalChargerWaitSec: 0,
+          totalEmptyDist: 0,
+          totalFullDist: 0,
+          strandedEvents: 0
+        }
+      };
+    }
+
+    // --- 4. CORE SIMULATION STEP ENGINE ---
+    function stepSimulation(sim, dt, cfg = config) {
+      if (sim.elapsedSec >= cfg.shiftDurationSec) return;
+      sim.elapsedSec = Math.min(cfg.shiftDurationSec, sim.elapsedSec + dt);
+
+      const activeChargers = [];
+      if (cfg.locA.active) activeChargers.push({ id: 'A', x: cfg.locA.x, y: cfg.locA.y, stations: cfg.locA.stations });
+      if (cfg.locB.active) activeChargers.push({ id: 'B', x: cfg.locB.x, y: cfg.locB.y, stations: cfg.locB.stations });
+
+      // Count how many forklifts are currently occupying or routing to each charger
+      function getChargerOccupancy(chargerId) {
+        return sim.forklifts.filter(f =>
+          (f.state === 'CHARGING' || f.state === 'QUEUED_CHARGER' || f.state === 'TO_CHARGER') &&
+          f.targetCharger === chargerId
+        ).length;
+      }
+
+      function getChargingNowCount() {
+        return sim.forklifts.filter(f => f.state === 'CHARGING' || f.state === 'TO_CHARGER').length;
+      }
+
+      // Helper: Determine if forklift needs charging under selected policy
+      function needsCharge(fl, hasAvailableOrders) {
+        if (activeChargers.length === 0) return false;
+        if (cfg.chargePolicy === 'threshold_25') {
+          return fl.soc <= 25;
+        } else if (cfg.chargePolicy === 'critical_15') {
+          return fl.soc <= 15;
+        } else if (cfg.chargePolicy === 'opportunity_idle') {
+          if (fl.soc <= 22) return true;
+          if (!hasAvailableOrders && fl.soc < 80) return true;
+          return false;
+        } else if (cfg.chargePolicy === 'staggered_guard') {
+          if (fl.soc <= 15) return true; // Emergency override
+          if (fl.soc <= 32 && getChargingNowCount() < 2) return true;
+          return false;
+        }
+        return fl.soc <= 25;
+      }
+
+      // Helper: Select best charging location (A or B)
+      function selectBestCharger(fl) {
+        if (activeChargers.length === 0) return null;
+        if (activeChargers.length === 1) return activeChargers[0];
+
+        let best = activeChargers[0];
+        let bestScore = Infinity;
+
+        activeChargers.forEach(ch => {
+          const dist = Math.hypot(ch.x - fl.x, ch.y - fl.y);
+          const travelSec = dist / cfg.speedEmpty;
+          if (cfg.stationRouting === 'nearest') {
+            if (travelSec < bestScore) {
+              bestScore = travelSec;
+              best = ch;
+            }
+          } else {
+            // Least congested: factor queue wait penalty if occupancy >= stations
+            const occ = getChargerOccupancy(ch.id);
+            const overflow = Math.max(0, occ - ch.stations + 1);
+            const estimatedWaitSec = overflow * (cfg.chargeDurationMins * 60 * 0.45);
+            const score = travelSec + estimatedWaitSec;
+            if (score < bestScore) {
+              bestScore = score;
+              best = ch;
+            }
+          }
+        });
+        return best;
+      }
+
+      // Available arrived pending orders
+      const availableOrders = sim.orders.filter(o => o.status === 'PENDING' && o.arrivalSec <= sim.elapsedSec);
+
+      // Update each forklift
+      for (const fl of sim.forklifts) {
+        if (fl.state === 'STRANDED') {
+          continue; // Battery depleted to 0%
+        }
+
+        // Check if battery died while moving
+        if (fl.soc <= 0) {
+          fl.soc = 0;
+          fl.state = 'STRANDED';
+          fl.loaded = false;
+          fl.strandedCount++;
+          sim.metrics.strandedEvents++;
+          if (fl.currentOrder) {
+            fl.currentOrder.status = 'PENDING';
+            fl.currentOrder.assignedTo = null;
+            fl.currentOrder = null;
+          }
+          continue;
+        }
+
+        // 1. IDLE STATE: Decide whether to charge or pick up an order
+        if (fl.state === 'IDLE') {
+          fl.soc = Math.max(0, fl.soc - cfg.drainRateIdlePerSec * dt);
+
+          if (needsCharge(fl, availableOrders.length > 0)) {
+            const ch = selectBestCharger(fl);
+            if (ch) {
+              fl.targetCharger = ch.id;
+              fl.waypoints = findPathAStar(fl.x, fl.y, ch.x, ch.y);
+              fl.state = 'TO_CHARGER';
+              continue;
+            }
+          }
+
+          // Dispatch order if available
+          if (availableOrders.length > 0) {
+            let chosenIdx = 0;
+            if (cfg.dispatchPolicy === 'nearest_forklift') {
+              let bestDist = Infinity;
+              availableOrders.forEach((ord, idx) => {
+                const d = Math.hypot(ord.pickup.x - fl.x, ord.pickup.y - fl.y);
+                if (d < bestDist) {
+                  bestDist = d;
+                  chosenIdx = idx;
+                }
+              });
+            }
+            const order = availableOrders.splice(chosenIdx, 1)[0];
+            order.status = 'ASSIGNED';
+            order.assignedTo = fl.id;
+            fl.currentOrder = order;
+            fl.waypoints = findPathAStar(fl.x, fl.y, order.pickup.x, order.pickup.y);
+            fl.state = 'TO_PICKUP';
+          }
+        }
+
+        // 2. MOVING STATES (TO_PICKUP, TO_DROPOFF, TO_CHARGER)
+        else if (fl.state === 'TO_PICKUP' || fl.state === 'TO_DROPOFF' || fl.state === 'TO_CHARGER') {
+          const isFull = fl.loaded;
+          const speed = isFull ? cfg.speedFull : cfg.speedEmpty;
+          const drainRate = isFull ? cfg.drainRateFullPerSec : cfg.drainRateEmptyPerSec;
+
+          let moveBudget = speed * dt;
+          let actualMoved = 0;
+
+          while (moveBudget > 0 && fl.waypoints.length > 0) {
+            const target = fl.waypoints[0];
+            const dx = target.x - fl.x;
+            const dy = target.y - fl.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist <= moveBudget) {
+              fl.x = target.x;
+              fl.y = target.y;
+              actualMoved += dist;
+              moveBudget -= dist;
+              fl.waypoints.shift();
+            } else {
+              fl.x += (dx / dist) * moveBudget;
+              fl.y += (dy / dist) * moveBudget;
+              fl.angle = Math.atan2(dy, dx);
+              actualMoved += moveBudget;
+              moveBudget = 0;
+            }
+          }
+
+          // Update distance & energy metrics
+          const timeSpentMoving = actualMoved / speed;
+          fl.soc = Math.max(0, fl.soc - drainRate * timeSpentMoving);
+
+          if (isFull) {
+            fl.distFull += actualMoved;
+            sim.metrics.totalFullDist += actualMoved;
+          } else {
+            fl.distEmpty += actualMoved;
+            sim.metrics.totalEmptyDist += actualMoved;
+          }
+
+          // Arrived at waypoint destination
+          if (fl.waypoints.length === 0) {
+            if (fl.state === 'TO_PICKUP') {
+              fl.state = 'HANDLING_PICK';
+              fl.handleTimer = cfg.handlingTimeSec;
+            } else if (fl.state === 'TO_DROPOFF') {
+              fl.state = 'HANDLING_DROP';
+              fl.handleTimer = cfg.handlingTimeSec;
+            } else if (fl.state === 'TO_CHARGER') {
+              // Check if a charging port is open at targetCharger
+              const chObj = activeChargers.find(c => c.id === fl.targetCharger);
+              if (!chObj) {
+                fl.state = 'IDLE';
+              } else {
+                const currentlyChargingHere = sim.forklifts.filter(f => f.state === 'CHARGING' && f.targetCharger === chObj.id).length;
+                if (currentlyChargingHere < chObj.stations) {
+                  fl.state = 'CHARGING';
+                } else {
+                  fl.state = 'QUEUED_CHARGER';
+                }
+              }
+            }
+          }
+        }
+
+        // 3. HANDLING PALLET STATES
+        else if (fl.state === 'HANDLING_PICK') {
+          fl.soc = Math.max(0, fl.soc - cfg.drainRateIdlePerSec * dt);
+          fl.handleTimer -= dt;
+          if (fl.handleTimer <= 0) {
+            fl.loaded = true;
+            fl.waypoints = findPathAStar(fl.x, fl.y, fl.currentOrder.dropoff.x, fl.currentOrder.dropoff.y);
+            fl.state = 'TO_DROPOFF';
+          }
+        } else if (fl.state === 'HANDLING_DROP') {
+          fl.soc = Math.max(0, fl.soc - cfg.drainRateIdlePerSec * dt);
+          fl.handleTimer -= dt;
+          if (fl.handleTimer <= 0) {
+            fl.loaded = false;
+            const ord = fl.currentOrder;
+            ord.status = 'COMPLETED';
+            ord.completedSec = sim.elapsedSec;
+
+            fl.ordersCompleted++;
+            sim.metrics.completedOrders++;
+            if (ord.type === 'INBOUND') sim.metrics.inboundCompleted++;
+            else sim.metrics.outboundCompleted++;
+            sim.metrics.totalCycleSec += (sim.elapsedSec - ord.arrivalSec);
+
+            fl.currentOrder = null;
+            fl.state = 'IDLE';
+          }
+        }
+
+        // 4. QUEUED AT CHARGER
+        else if (fl.state === 'QUEUED_CHARGER') {
+          fl.chargeWaitSec += dt;
+          sim.metrics.totalChargerWaitSec += dt;
+          const chObj = activeChargers.find(c => c.id === fl.targetCharger);
+          if (!chObj) {
+            fl.state = 'IDLE';
+          } else {
+            const currentlyChargingHere = sim.forklifts.filter(f => f.state === 'CHARGING' && f.targetCharger === chObj.id).length;
+            if (currentlyChargingHere < chObj.stations) {
+              fl.state = 'CHARGING';
+            }
+          }
+        }
+
+        // 5. CHARGING AT PORT
+        else if (fl.state === 'CHARGING') {
+          const chargeRatePerSec = 100 / (cfg.chargeDurationMins * 60);
+          fl.soc = Math.min(100, fl.soc + chargeRatePerSec * dt);
+          fl.chargingSec += dt;
+
+          const targetSoC = (cfg.chargePolicy === 'critical_15') ? 80 : 90;
+          // If opportunity charging and orders are waiting, release once >= 65%
+          const releaseEarly = (cfg.chargePolicy === 'opportunity_idle' && availableOrders.length > 0 && fl.soc >= 65);
+
+          if (fl.soc >= targetSoC || releaseEarly) {
+            fl.targetCharger = null;
+            fl.state = 'IDLE';
+          }
+        }
+      }
+    }
+
+    // --- 5. SETUP COST & ECONOMIC SCORING ---
+    function calculateSetupCost(cfg = config) {
+      const activeSites = (cfg.locA.active ? 1 : 0) + (cfg.locB.active ? 1 : 0);
+      const totalStations = (cfg.locA.active ? cfg.locA.stations : 0) + (cfg.locB.active ? cfg.locB.stations : 0);
+      const siteCost = activeSites * cfg.siteSetupCost;
+      const stationCost = totalStations * cfg.stationUnitCost;
+      return {
+        activeSites,
+        totalStations,
+        siteCost,
+        stationCost,
+        total: siteCost + stationCost
+      };
+    }
+
+    function calculateShiftTotalCost(sim, cfg = config) {
+      const setup = calculateSetupCost(cfg);
+      const dailyCapexAmortized = setup.total * 0.05; // $50 per $1,000 setup per shift
+      const uncompleted = cfg.orderCount - sim.metrics.completedOrders;
+      const uncompletedPenalty = uncompleted * 15;
+      const strandedPenalty = sim.metrics.strandedEvents * 100;
+      return Math.round(dailyCapexAmortized + uncompletedPenalty + strandedPenalty);
+    }
+
+    // --- 6. CANVAS RENDERER (50m x 50m DIGITAL TWIN) ---
+    const canvas = document.getElementById('warehouse-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = wrapper.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      renderWarehouse();
+    }
+
+    function renderWarehouse() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      const W = wrapper.clientWidth;
+      const H = wrapper.clientHeight;
+      if (W === 0 || H === 0) return;
+
+      const pad = 26; // Padding for 0m..50m rulers
+      const mapSize = Math.min(W, H) - pad * 2;
+      const scale = mapSize / GRID_SIZE; // pixels per meter
+
+      const toPxX = (mx) => pad + mx * scale;
+      const toPxY = (my) => pad + (GRID_SIZE - my) * scale; // y=0 at bottom, y=50 at top
+
+      // Clear background
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(0, 0, W, H);
+
+      // Floor slab
+      ctx.fillStyle = '#121215';
+      ctx.fillRect(pad, pad, mapSize, mapSize);
+
+      // 5m x 5m Blueprint Grid Lines & Axis Rulers
+      ctx.strokeStyle = 'rgba(63, 63, 70, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#71717a';
+      ctx.textAlign = 'center';
+
+      for (let m = 0; m <= GRID_SIZE; m += 5) {
+        const px = toPxX(m);
+        const py = toPxY(m);
+
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(px, pad);
+        ctx.lineTo(px, pad + mapSize);
+        ctx.stroke();
+
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(pad, py);
+        ctx.lineTo(pad + mapSize, py);
+        ctx.stroke();
+
+        // Axis labels
+        if (m % 10 === 0) {
+          ctx.fillText(`${m}m`, px, pad + mapSize + 14);
+          ctx.textAlign = 'right';
+          ctx.fillText(`${m}m`, pad - 5, py + 3);
+          ctx.textAlign = 'center';
+        }
+      }
+
+      // Draw Warehouse Cells (Racks, Inbound Docks, Outbound Docks)
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const cell = warehouseGrid[y][x];
+          if (cell === CELL_EMPTY) continue;
+
+          const cx = toPxX(x);
+          const cy = toPxY(y + 1);
+
+          if (cell === CELL_RACK) {
+            ctx.fillStyle = '#27272a';
+            ctx.fillRect(cx + 0.5, cy + 0.5, scale - 1, scale - 1);
+            ctx.strokeStyle = '#3f3f46';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(cx + 0.5, cy + 0.5, scale - 1, scale - 1);
+          } else if (cell === CELL_INBOUND) {
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.35)';
+            ctx.fillRect(cx, cy, scale, scale);
+          } else if (cell === CELL_OUTBOUND) {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+            ctx.fillRect(cx, cy, scale, scale);
+          }
+        }
+      }
+
+      // Dock Zone Labels
+      ctx.font = 'bold 9px "Inter", sans-serif';
+      ctx.fillStyle = '#60a5fa';
+      ctx.fillText('INBOUND DOCKS', toPxX(14), toPxY(0.5));
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('OUTBOUND DOCKS', toPxX(36), toPxY(0.5));
+
+      // Draw Pending Order Markers (subtle dots at pickup spots)
+      if (simState.orders) {
+        for (const ord of simState.orders) {
+          if (ord.status === 'PENDING' && ord.arrivalSec <= simState.elapsedSec) {
+            const ox = toPxX(ord.pickup.x + 0.5);
+            const oy = toPxY(ord.pickup.y + 0.5);
+            ctx.fillStyle = ord.type === 'INBOUND' ? 'rgba(96, 165, 250, 0.85)' : 'rgba(251, 191, 36, 0.85)';
+            ctx.beginPath();
+            ctx.arc(ox, oy, Math.max(2, scale * 0.25), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Helper to Draw Charging Station Hub
+      function drawChargerSite(loc, label, colorHex, bgRgba) {
+        const cx = toPxX(loc.x + 0.5);
+        const cy = toPxY(loc.y + 0.5);
+        const radius = scale * 1.9;
+
+        if (!loc.active) {
+          // Draw inactive ghost footprint
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = 'rgba(113, 113, 122, 0.45)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#71717a';
+          ctx.font = 'bold 9px "JetBrains Mono", monospace';
+          ctx.fillText(`${label} (OFF)`, cx, cy - radius - 4);
+          ctx.restore();
+          return;
+        }
+
+        // Active Glowing Hub
+        ctx.fillStyle = bgRgba;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = colorHex;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw individual station port indicators (1..4) around the hub
+        const chargingCount = simState.forklifts
+          ? simState.forklifts.filter(f => f.state === 'CHARGING' && f.targetCharger === label).length
+          : 0;
+
+        for (let p = 0; p < loc.stations; p++) {
+          const angle = -Math.PI / 2 + (p * (Math.PI * 2)) / loc.stations;
+          const px = cx + Math.cos(angle) * (radius * 0.62);
+          const py = cy + Math.sin(angle) * (radius * 0.62);
+          ctx.fillStyle = p < chargingCount ? '#22d3ee' : '#18181b';
+          ctx.strokeStyle = colorHex;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(px, py, Math.max(2.5, scale * 0.28), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Hub Label
+        ctx.fillStyle = colorHex;
+        ctx.font = 'bold 10px "JetBrains Mono", monospace';
+        ctx.fillText(`Site ${label} [${chargingCount}/${loc.stations}]`, cx, cy - radius - 5);
+      }
+
+      drawChargerSite(config.locA, 'A', '#22d3ee', 'rgba(34, 211, 238, 0.16)');
+      drawChargerSite(config.locB, 'B', '#fbbf24', 'rgba(251, 191, 36, 0.16)');
+
+      // Draw Forklifts & Active Routing Paths
+      if (simState.forklifts) {
+        for (const fl of simState.forklifts) {
+          const fx = toPxX(fl.x + 0.5);
+          const fy = toPxY(fl.y + 0.5);
+
+          // Draw active waypoint path
+          if (fl.waypoints && fl.waypoints.length > 0) {
+            ctx.save();
+            ctx.strokeStyle = fl.state === 'TO_CHARGER'
+              ? 'rgba(34, 211, 238, 0.45)'
+              : (fl.loaded ? 'rgba(251, 191, 36, 0.35)' : 'rgba(161, 161, 170, 0.25)');
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(fx, fy);
+            for (const wp of fl.waypoints) {
+              ctx.lineTo(toPxX(wp.x + 0.5), toPxY(wp.y + 0.5));
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Forklift Body Color by State
+          let bodyColor = '#10b981'; // Working / Idle emerald
+          if (fl.state === 'STRANDED') bodyColor = '#ef4444';
+          else if (fl.state === 'CHARGING' || fl.state === 'QUEUED_CHARGER' || fl.state === 'TO_CHARGER') bodyColor = '#06b6d4';
+          else if (fl.loaded) bodyColor = '#f59e0b';
+
+          const r = Math.max(5.5, scale * 0.65);
+
+          // Outer glow if charging
+          if (fl.state === 'CHARGING') {
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.28)';
+            ctx.beginPath();
+            ctx.arc(fx, fy, r * 1.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Forklift chassis circle
+          ctx.fillStyle = bodyColor;
+          ctx.strokeStyle = '#09090b';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(fx, fy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Loaded pallet square indicator on forks
+          if (fl.loaded) {
+            ctx.fillStyle = '#fef3c7';
+            ctx.fillRect(fx - r * 0.45, fy - r * 0.45, r * 0.9, r * 0.9);
+          }
+
+          // Mini Battery Bar above forklift
+          const barW = r * 2.4;
+          const barH = 3;
+          const bx = fx - barW / 2;
+          const by = fy - r - 6;
+          ctx.fillStyle = '#18181b';
+          ctx.fillRect(bx, by, barW, barH);
+          ctx.fillStyle = fl.soc > 30 ? '#10b981' : (fl.soc > 15 ? '#f59e0b' : '#ef4444');
+          ctx.fillRect(bx, by, barW * (fl.soc / 100), barH);
+
+          // Forklift ID Tag
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px "JetBrains Mono", monospace';
+          ctx.fillText(fl.id, fx, by - 2);
+        }
+      }
+
+      // Outer border of 50m x 50m floor
+      ctx.strokeStyle = '#3f3f46';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(pad, pad, mapSize, mapSize);
+    }
+
+    // --- 7. UI SYNCHRONIZATION & TELEMETRY ---
+    function showToast(msg, type = 'info') {
+      const banner = document.getElementById('toast-banner');
+      const icon = document.getElementById('toast-icon');
+      const text = document.getElementById('toast-msg');
+
+      text.textContent = msg;
+      if (type === 'warn') {
+        icon.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-base';
+      } else {
+        icon.className = 'fa-solid fa-circle-info text-cyan-400 text-base';
+      }
+
+      banner.classList.remove('hidden');
+      clearTimeout(banner._hideTimer);
+      banner._hideTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 3500);
+    }
+
+    function updateConfigUI() {
+      const code = `${config.locA.active ? '1' : '0'}${config.locB.active ? '1' : '0'}`;
+      document.getElementById('badge-config-code').textContent = `Config: ${code}`;
+
+      // Highlight active binary button
+      document.querySelectorAll('.btn-binary').forEach(btn => {
+        if (btn.dataset.binary === code) {
+          btn.className = 'btn-binary py-2 rounded-xl border border-cyan-500 bg-cyan-950/50 text-xs font-mono-tech font-bold text-cyan-300 transition';
+        } else {
+          btn.className = 'btn-binary py-2 rounded-xl border border-zinc-700 bg-zinc-950 hover:bg-zinc-800 text-xs font-mono-tech font-bold text-zinc-400 transition';
+        }
+      });
+
+      // Location A card styling
+      document.getElementById('chk-loc-a').checked = config.locA.active;
+      document.getElementById('slider-stations-a').disabled = !config.locA.active;
+      document.getElementById('val-stations-a').textContent = config.locA.active ? config.locA.stations : '0';
+      document.getElementById('coords-loc-a').textContent = `(${config.locA.x}m, ${config.locA.y}m)`;
+      document.getElementById('card-loc-a').style.opacity = config.locA.active ? '1' : '0.55';
+
+      // Location B card styling
+      document.getElementById('chk-loc-b').checked = config.locB.active;
+      document.getElementById('slider-stations-b').disabled = !config.locB.active;
+      document.getElementById('val-stations-b').textContent = config.locB.active ? config.locB.stations : '0';
+      document.getElementById('coords-loc-b').textContent = `(${config.locB.x}m, ${config.locB.y}m)`;
+      document.getElementById('card-loc-b').style.opacity = config.locB.active ? '1' : '0.55';
+
+      // Setup cost update
+      const costInfo = calculateSetupCost(config);
+      document.getElementById('disp-total-setup-cost').textContent = `$${costInfo.total.toLocaleString()}`;
+      document.getElementById('setup-cost-breakdown').textContent =
+        `${costInfo.activeSites} Site(s) ($${costInfo.siteCost.toLocaleString()}) + ${costInfo.totalStations} Station(s) ($${costInfo.stationCost.toLocaleString()})`;
+
+      updateTelemetryUI();
+      renderWarehouse();
+    }
+
+    function updateTelemetryUI() {
+      // Format shift clock HH:MM
+      const totalMins = Math.floor(simState.elapsedSec / 60);
+      const hh = Math.floor(totalMins / 60).toString().padStart(2, '0');
+      const mm = (totalMins % 60).toString().padStart(2, '0');
+      document.getElementById('sim-clock').innerHTML = `${hh}:${mm} <span class="text-zinc-500 font-normal">/ 08:00</span>`;
+
+      const m = simState.metrics;
+      if (!m) return;
+
+      const pct = Math.round((m.completedOrders / config.orderCount) * 100);
+      document.getElementById('kpi-completion-pct').textContent = `${pct}%`;
+      document.getElementById('kpi-orders-done').innerHTML = `${m.completedOrders} <span class="text-sm font-normal text-zinc-500">/ ${config.orderCount}</span>`;
+      document.getElementById('kpi-progress-bar').style.width = `${pct}%`;
+
+      const queueCount = simState.orders.filter(o => o.status === 'PENDING' && o.arrivalSec <= simState.elapsedSec).length;
+      document.getElementById('kpi-queue-len').textContent = queueCount;
+
+      const avgCycleMin = m.completedOrders > 0 ? (m.totalCycleSec / m.completedOrders / 60) : 0;
+      document.getElementById('kpi-cycle-time').textContent = `${avgCycleMin.toFixed(1)} min`;
+
+      const waitMin = m.totalChargerWaitSec / 60;
+      document.getElementById('kpi-wait-time').textContent = `${waitMin.toFixed(1)} min`;
+
+      const totalDist = m.totalEmptyDist + m.totalFullDist;
+      const emptyRatio = totalDist > 0 ? Math.round((m.totalEmptyDist / totalDist) * 100) : 0;
+      document.getElementById('kpi-empty-ratio').textContent = `${emptyRatio}%`;
+
+      document.getElementById('kpi-stranded').textContent = m.strandedEvents;
+      document.getElementById('kpi-in-out-split').textContent = `In: ${m.inboundCompleted} | Out: ${m.outboundCompleted}`;
+
+      const estCost = calculateShiftTotalCost(simState, config);
+      document.getElementById('kpi-total-cost').textContent = `$${estCost.toLocaleString()}`;
+
+      // Render 4 Forklift Cards
+      const container = document.getElementById('fleet-cards-container');
+      container.innerHTML = '';
+
+      for (const fl of simState.forklifts) {
+        let badgeClass = 'bg-emerald-950 text-emerald-300 border-emerald-800';
+        let stateLabel = fl.state.replace('_', ' ');
+        if (fl.state === 'STRANDED') {
+          badgeClass = 'bg-rose-950 text-rose-300 border-rose-800';
+        } else if (fl.state === 'CHARGING' || fl.state === 'QUEUED_CHARGER' || fl.state === 'TO_CHARGER') {
+          badgeClass = 'bg-cyan-950 text-cyan-300 border-cyan-800';
+        } else if (fl.loaded) {
+          badgeClass = 'bg-amber-950 text-amber-300 border-amber-800';
+          stateLabel = 'LOADED';
+        }
+
+        const barColor = fl.soc > 30 ? 'bg-emerald-500' : (fl.soc > 15 ? 'bg-amber-500' : 'bg-rose-500');
+
+        const card = document.createElement('div');
+        card.className = 'bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 space-y-1.5';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-mono-tech text-xs font-extrabold text-white">${fl.id}</span>
+              <span class="text-[9px] font-mono-tech uppercase px-1.5 py-0.5 rounded border ${badgeClass}">${stateLabel}</span>
+            </div>
+            <span class="font-mono-tech text-xs font-bold ${fl.soc <= 15 ? 'text-rose-400' : 'text-zinc-200'}">${fl.soc.toFixed(0)}%</span>
+          </div>
+          <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+            <div class="${barColor} h-full transition-all duration-150" style="width: ${fl.soc}%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] font-mono-tech text-zinc-500">
+            <span>Done: <strong class="text-zinc-300">${fl.ordersCompleted}</strong></span>
+            <span>Pos: (${Math.round(fl.x)},${Math.round(fl.y)})</span>
+            <span>Wait: ${(fl.chargeWaitSec / 60).toFixed(1)}m</span>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    // --- 8. REAL-TIME ANIMATION LOOP ---
+    let lastFrameTime = null;
+
+    function animationLoop(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      const realDt = Math.min(0.05, (timestamp - lastFrameTime) / 1000);
+      lastFrameTime = timestamp;
+
+      if (simState.running) {
+        if (simState.elapsedSec >= config.shiftDurationSec) {
+          simState.running = false;
+          updatePlayButtonUI();
+          showToast('8-Hour Shift Simulation Complete!', 'info');
+        } else {
+          // Sub-step physics in 0.5s increments for high accuracy even at 60x speed
+          const simDtTotal = realDt * simState.speedMultiplier;
+          const subStep = 0.5;
+          let remaining = simDtTotal;
+          while (remaining > 0) {
+            const step = Math.min(subStep, remaining);
+            stepSimulation(simState, step, config);
+            remaining -= step;
+          }
+          updateTelemetryUI();
+          renderWarehouse();
+        }
+      }
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    function updatePlayButtonUI() {
+      const btn = document.getElementById('btn-play-pause');
+      const icon = document.getElementById('icon-play-pause');
+      const txt = document.getElementById('text-play-pause');
+
+      if (simState.running) {
+        btn.className = 'px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow';
+        icon.className = 'fa-solid fa-pause';
+        txt.textContent = 'Pause';
+      } else {
+        btn.className = 'px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow';
+        icon.className = 'fa-solid fa-play';
+        txt.textContent = simState.elapsedSec > 0 && simState.elapsedSec < config.shiftDurationSec ? 'Resume' : 'Start Shift';
+      }
+    }
+
+    function resetSimulation() {
+      simState.running = false;
+      const fresh = createInitialSimulation(config);
+      simState.elapsedSec = fresh.elapsedSec;
+      simState.forklifts = fresh.forklifts;
+      simState.orders = fresh.orders;
+      simState.metrics = fresh.metrics;
+      updatePlayButtonUI();
+      updateTelemetryUI();
+      renderWarehouse();
+    }
+
+    // --- 9. HEADLESS BATCH BENCHMARK ENGINE ---
+    function runHeadlessShift(testCfg) {
+      const sim = createInitialSimulation(testCfg);
+      const step = 1.0; // 1-second resolution across 28,800s shift
+      while (sim.elapsedSec < testCfg.shiftDurationSec) {
+        stepSimulation(sim, step, testCfg);
+      }
+      return sim;
+    }
+
+    function executeBenchmarkSuite() {
+      const mode = document.getElementById('select-benchmark-mode').value;
+      const tbody = document.getElementById('benchmark-table-body');
+      tbody.innerHTML = '';
+
+      const scenarios = [];
+
+      if (mode === 'layouts') {
+        const layouts = [
+          { label: '00 (No Chargers - Baseline)', a: false, b: false },
+          { label: `10 (Only Site A — ${config.locA.stations} ports)`, a: true, b: false },
+          { label: `01 (Only Site B — ${config.locB.stations} ports)`, a: false, b: true },
+          { label: `11 (Both Sites A & B — ${config.locA.stations + config.locB.stations} ports)`, a: true, b: true }
+        ];
+        layouts.forEach(l => {
+          const cloned = JSON.parse(JSON.stringify(config));
+          cloned.locA.active = l.a;
+          cloned.locB.active = l.b;
+          scenarios.push({ name: l.label, cfg: cloned });
+        });
+      } else if (mode === 'policies') {
+        const policies = [
+          { id: 'threshold_25', name: 'Threshold Opportunistic (<25% SoC)' },
+          { id: 'critical_15', name: 'Critical-Only (<15% SoC)' },
+          { id: 'opportunity_idle', name: 'Opportunity Idle Top-Up (<80%)' },
+          { id: 'staggered_guard', name: 'Staggered Fleet Guard (Max 2 Charging)' }
+        ];
+        policies.forEach(p => {
+          const cloned = JSON.parse(JSON.stringify(config));
+          cloned.chargePolicy = p.id;
+          scenarios.push({ name: p.name, cfg: cloned });
+        });
+      } else if (mode === 'stations') {
+        [1, 2, 3, 4].forEach(count => {
+          const cloned = JSON.parse(JSON.stringify(config));
+          if (cloned.locA.active) cloned.locA.stations = count;
+          if (cloned.locB.active) cloned.locB.stations = count;
+          const totalPorts = (cloned.locA.active ? count : 0) + (cloned.locB.active ? count : 0);
+          scenarios.push({ name: `${count} Station(s) per Active Site (${totalPorts} Total)`, cfg: cloned });
+        });
+      }
+
+      // Run all scenarios & identify lowest total cost
+      const results = scenarios.map(sc => {
+        const simRes = runHeadlessShift(sc.cfg);
+        const setup = calculateSetupCost(sc.cfg);
+        const shiftCost = calculateShiftTotalCost(simRes, sc.cfg);
+        return { name: sc.name, sim: simRes, setup, shiftCost };
+      });
+
+      const minCost = Math.min(...results.map(r => r.shiftCost));
+
+      results.forEach(r => {
+        const m = r.sim.metrics;
+        const pct = Math.round((m.completedOrders / config.orderCount) * 100);
+        const avgCycle = m.completedOrders > 0 ? (m.totalCycleSec / m.completedOrders / 60).toFixed(1) : '---';
+        const waitMin = (m.totalChargerWaitSec / 60).toFixed(1);
+        const totDist = m.totalEmptyDist + m.totalFullDist;
+        const emptyPct = totDist > 0 ? Math.round((m.totalEmptyDist / totDist) * 100) : 0;
+        const isBest = r.shiftCost === minCost;
+
+        const tr = document.createElement('tr');
+        tr.className = isBest ? 'bg-emerald-950/30 text-emerald-200' : 'text-zinc-300';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-semibold">
+            ${r.name}
+            ${isBest ? '<span class="ml-1.5 text-[9px] font-mono-tech uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-zinc-950 font-extrabold">Best</span>' : ''}
+          </td>
+          <td class="py-2.5 px-3">$${r.setup.total.toLocaleString()}</td>
+          <td class="py-2.5 px-3 font-bold">${m.completedOrders}/${config.orderCount} (${pct}%)</td>
+          <td class="py-2.5 px-3">${avgCycle}m</td>
+          <td class="py-2.5 px-3">${waitMin}m</td>
+          <td class="py-2.5 px-3">${emptyPct}%</td>
+          <td class="py-2.5 px-3 ${m.strandedEvents > 0 ? 'text-rose-400 font-bold' : 'text-zinc-400'}">${m.strandedEvents}</td>
+          <td class="py-2.5 px-3 font-extrabold ${isBest ? 'text-emerald-400' : 'text-white'}">$${r.shiftCost.toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- 10. EVENT LISTENERS & INTERACTIVITY ---
+    document.getElementById('btn-play-pause').addEventListener('click', () => {
+      if (simState.elapsedSec >= config.shiftDurationSec) {
+        resetSimulation();
+      }
+      simState.running = !simState.running;
+      updatePlayButtonUI();
+    });
+
+    document.getElementById('btn-reset-sim').addEventListener('click', () => {
+      resetSimulation();
+      showToast('Simulation reset to 00:00 with 100% battery.');
+    });
+
+    // Speed buttons
+    document.querySelectorAll('.btn-speed').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        simState.speedMultiplier = parseInt(e.target.dataset.speed);
+        document.querySelectorAll('.btn-speed').forEach(b => {
+          b.className = 'btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold text-zinc-400 hover:text-white';
+        });
+        e.target.className = 'btn-speed px-2 py-1 rounded text-[11px] font-mono-tech font-bold bg-cyan-600 text-zinc-950';
+      });
+    });
+
+    // Binary Layout Buttons (00, 10, 01, 11)
+    document.querySelectorAll('.btn-binary').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.dataset.binary;
+        config.locA.active = code[0] === '1';
+        config.locB.active = code[1] === '1';
+        updateConfigUI();
+      });
+    });
+
+    document.getElementById('chk-loc-a').addEventListener('change', (e) => {
+      config.locA.active = e.target.checked;
+      updateConfigUI();
+    });
+
+    document.getElementById('chk-loc-b').addEventListener('change', (e) => {
+      config.locB.active = e.target.checked;
+      updateConfigUI();
+    });
+
+    document.getElementById('slider-stations-a').addEventListener('input', (e) => {
+      config.locA.stations = parseInt(e.target.value);
+      updateConfigUI();
+    });
+
+    document.getElementById('slider-stations-b').addEventListener('input', (e) => {
+      config.locB.stations = parseInt(e.target.value);
+      updateConfigUI();
+    });
+
+    document.getElementById('input-site-cost').addEventListener('input', (e) => {
+      config.siteSetupCost = Math.max(0, parseInt(e.target.value) || 0);
+      updateConfigUI();
+    });
+
+    document.getElementById('input-station-cost').addEventListener('input', (e) => {
+      config.stationUnitCost = Math.max(0, parseInt(e.target.value) || 0);
+      updateConfigUI();
+    });
+
+    // Interactive Floorplan Relocation for Charging Location A or B
+    document.getElementById('btn-move-a').addEventListener('click', () => {
+      simState.movingLocationTarget = 'A';
+      document.getElementById('placement-hint').innerHTML = '<span class="text-cyan-400 font-bold">Click any open floor tile for Site A...</span>';
+      showToast('Click an open aisle tile on the warehouse floor to place Location A.');
+    });
+
+    document.getElementById('btn-move-b').addEventListener('click', () => {
+      simState.movingLocationTarget = 'B';
+      document.getElementById('placement-hint').innerHTML = '<span class="text-amber-400 font-bold">Click any open floor tile for Site B...</span>';
+      showToast('Click an open aisle tile on the warehouse floor to place Location B.');
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (!simState.movingLocationTarget) return;
+      const wrapper = document.getElementById('canvas-wrapper');
+      const rect = wrapper.getBoundingClientRect();
+      const pad = 26;
+      const mapSize = Math.min(rect.width, rect.height) - pad * 2;
+      const scale = mapSize / GRID_SIZE;
+
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const mx = Math.floor((clickX - pad) / scale);
+      const my = Math.floor(GRID_SIZE - (clickY - pad) / scale);
+
+      if (mx >= 1 && mx <= 48 && my >= 1 && my <= 48 && warehouseGrid[my][mx] === CELL_EMPTY) {
+        if (simState.movingLocationTarget === 'A') {
+          config.locA.x = mx;
+          config.locA.y = my;
+          config.locA.active = true;
+        } else {
+          config.locB.x = mx;
+          config.locB.y = my;
+          config.locB.active = true;
+        }
+        simState.movingLocationTarget = null;
+        document.getElementById('placement-hint').textContent = 'Click "Move" to relocate chargers';
+        updateConfigUI();
+        showToast(`Charging location updated to (${mx}m, ${my}m).`);
+      } else {
+        showToast('Cannot place charger inside a rack or dock. Click an open floor tile.', 'warn');
+      }
+    });
+
+    // Policy & Workload Controls
+    document.getElementById('select-charge-policy').addEventListener('change', (e) => {
+      config.chargePolicy = e.target.value;
+    });
+
+    document.getElementById('select-station-routing').addEventListener('change', (e) => {
+      config.stationRouting = e.target.value;
+    });
+
+    document.getElementById('select-dispatch-policy').addEventListener('change', (e) => {
+      config.dispatchPolicy = e.target.value;
+    });
+
+    document.getElementById('slider-order-count').addEventListener('input', (e) => {
+      config.orderCount = parseInt(e.target.value);
+      document.getElementById('val-order-count').textContent = config.orderCount;
+      resetSimulation();
+    });
+
+    document.getElementById('slider-charge-mins').addEventListener('input', (e) => {
+      config.chargeDurationMins = parseInt(e.target.value);
+      document.getElementById('val-charge-mins').textContent = `${config.chargeDurationMins}m`;
+    });
+
+    document.getElementById('btn-new-orders').addEventListener('click', () => {
+      simState.orderSeed = Math.floor(Math.random() * 100000);
+      resetSimulation();
+      showToast(`Generated fresh randomized shift order stream (Seed #${simState.orderSeed}).`);
+    });
+
+    // Benchmark Modal Events
+    const benchmarkModal = document.getElementById('benchmark-modal');
+    document.getElementById('btn-open-benchmark').addEventListener('click', () => {
+      benchmarkModal.classList.remove('hidden');
+      executeBenchmarkSuite();
+    });
+    document.getElementById('btn-close-benchmark').addEventListener('click', () => benchmarkModal.classList.add('hidden'));
+    document.getElementById('btn-close-benchmark-2').addEventListener('click', () => benchmarkModal.classList.add('hidden'));
+    document.getElementById('btn-run-batch').addEventListener('click', executeBenchmarkSuite);
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- 11. INITIALIZE APPLICATION ---
+    window.onload = function() {
+      resetSimulation();
+      updateConfigUI();
+      resizeCanvas();
+      requestAnimationFrame(animationLoop);
+    };
+  </script>
+</body>
+</html>
