@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BUSINFO 711 • Week 9 Rehearsal Room Simulation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Smooth range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 9999px;
+      background: #cbd5e1;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
+      background: #00467f;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+      margin-top: -6px;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #0369a1;
+    }
+
+    /* Movement animations */
+    @keyframes pulseEnter {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(4px); }
+    }
+    @keyframes pulseLeave {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-4px); }
+    }
+    @keyframes badgeFadeIn {
+      from { opacity: 0; transform: translateY(4px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .anim-entering {
+      animation: pulseEnter 1.2s ease-in-out infinite, badgeFadeIn 0.25s ease-out;
+    }
+    .anim-leaving {
+      animation: pulseLeave 1.2s ease-in-out infinite, badgeFadeIn 0.25s ease-out;
+    }
+    .anim-in-room {
+      animation: badgeFadeIn 0.25s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Top Header & Live Clock Banner -->
+  <header class="bg-[#00467f] text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-3 sm:px-4 py-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-sky-200">
+          <span>University of Auckland Business School</span>
+          <span>•</span>
+          <span>BUSINFO 711</span>
+          <span>•</span>
+          <span>Wed, 25 Nov 2026</span>
+        </div>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight leading-tight">
+          Week 9 Rehearsal Presentations — Live Room Occupancy &amp; Flow Simulation
+        </h1>
+      </div>
+
+      <!-- Live Clock & Summary Counters -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="bg-slate-900/40 border border-white/15 rounded-lg px-3 py-1.5 flex items-center gap-3">
+          <div>
+            <div class="text-[9px] uppercase tracking-wider text-sky-200 font-semibold">Simulation Time</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="clock24" class="text-xl font-extrabold tabular-nums tracking-tight">08:56</span>
+              <span id="clock12" class="text-[11px] font-semibold text-sky-200 tabular-nums">8:56 AM</span>
+            </div>
+          </div>
+          <div class="h-7 w-px bg-white/20"></div>
+          <div class="text-[11px] space-y-0.5 leading-tight">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>Active Rooms: <strong id="activeRoomCount" class="tabular-nums">0</strong>/5</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-300"></span>
+              <span>Doorway / Corridor: <strong id="transitCount" class="tabular-nums">0</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Scrubber & Playback Controls Bar -->
+    <div class="bg-white text-slate-800 border-b border-slate-200 shadow-sm">
+      <div class="max-w-[1600px] mx-auto px-3 sm:px-4 py-2 space-y-2">
+        <!-- Slider Row -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5">
+          <!-- Play / Pause & Step Controls -->
+          <div class="flex items-center gap-1 shrink-0">
+            <button id="stepBackBtn" title="Back 1 minute (Left Arrow)"
+              class="px-2 py-1.5 rounded-md border border-slate-300 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-xs font-bold text-slate-700 transition">
+              -1m
+            </button>
+            <button id="playPauseBtn"
+              class="px-3 py-1.5 rounded-md bg-[#00467f] hover:bg-sky-800 active:bg-sky-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition min-w-[82px] justify-center">
+              <span id="playIcon">▶</span>
+              <span id="playLabel">Play</span>
+            </button>
+            <button id="stepFwdBtn" title="Forward 1 minute (Right Arrow)"
+              class="px-2 py-1.5 rounded-md border border-slate-300 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-xs font-bold text-slate-700 transition">
+              +1m
+            </button>
+          </div>
+
+          <!-- Timeline Slider -->
+          <div class="flex-1 flex items-center gap-2.5">
+            <span class="text-xs font-semibold text-slate-500 tabular-nums shrink-0">08:45</span>
+            <div class="relative flex-1">
+              <input id="timeSlider" type="range" min="525" max="1095" step="1" value="536" class="w-full" />
+            </div>
+            <span class="text-xs font-semibold text-slate-500 tabular-nums shrink-0">18:15</span>
+          </div>
+
+          <!-- Speed Multipliers -->
+          <div class="flex items-center gap-0.5 shrink-0 bg-slate-100 p-0.5 rounded-md border border-slate-200">
+            <span class="text-[10px] font-semibold text-slate-500 px-1.5">Speed:</span>
+            <button data-speed="1" class="speed-btn px-2 py-0.5 rounded text-[11px] font-bold transition bg-white text-[#00467f] shadow-sm">1x</button>
+            <button data-speed="5" class="speed-btn px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition">5x</button>
+            <button data-speed="15" class="speed-btn px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition">15x</button>
+            <button data-speed="30" class="speed-btn px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition">30x</button>
+          </div>
+        </div>
+
+        <!-- Quick-Jump Slot Buttons & Legend Row -->
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2 pt-1.5 border-t border-slate-100">
+          <!-- Quick Jumps -->
+          <div class="flex flex-wrap items-center gap-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">Jump:</span>
+            <button data-time="537" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 hover:bg-sky-100 hover:text-[#00467f] text-slate-700 border border-slate-200 transition">08:57 Setup</button>
+            <button data-time="597" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">09:57 Handover</button>
+            <button data-time="647" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 hover:bg-sky-100 hover:text-[#00467f] text-slate-700 border border-slate-200 transition">10:47 Exit</button>
+            <button data-time="720" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 hover:bg-sky-100 hover:text-[#00467f] text-slate-700 border border-slate-200 transition">12:00 MKT04</button>
+            <button data-time="897" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">14:57 Peak Prep</button>
+            <button data-time="900" class="jump-btn px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition">15:00 All 5 Rooms</button>
+            <button data-time="957" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">15:57 Shift</button>
+            <button data-time="1067" class="jump-btn px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 hover:bg-sky-100 hover:text-[#00467f] text-slate-700 border border-slate-200 transition">17:47 Final Exit</button>
+          </div>
+
+          <!-- Role & Status Legend -->
+          <div class="flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-sm bg-indigo-600"></span>
+              <span class="font-medium">BCT</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-sm bg-teal-600"></span>
+              <span class="font-medium">GTA</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-sm bg-amber-500"></span>
+              <span class="font-medium">Team</span>
+            </div>
+            <span class="text-slate-300">|</span>
+            <span class="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-semibold">Entering</span>
+            <span class="px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 font-semibold">In Room</span>
+            <span class="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-semibold">Exiting</span>
+            <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold">Corridor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-[1600px] w-full mx-auto px-2.5 sm:px-3.5 py-3 flex-1 space-y-3">
+
+    <!-- Timing Rules Quick Reference Strip -->
+    <div class="bg-white rounded-lg border border-slate-200 px-3 py-1.5 shadow-sm flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+      <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-sky-100 text-[#00467f] text-[10px] font-bold">i</span>
+        <span>Cycle (<code class="bg-slate-100 px-1 rounded">T</code>–<code class="bg-slate-100 px-1 rounded">T+60</code>):</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        <span><strong>BCT &amp; GTA:</strong> Enter <code class="text-emerald-700 font-semibold">[T-5, T]</code> (or stay put) • Exit <code class="text-rose-700 font-semibold">[T+55, T+60]</code></span>
+        <span><strong>Teams:</strong> Corridor <code class="text-amber-700 font-semibold">T-5</code> • Enter <code class="text-emerald-700 font-semibold">[T, T+5]</code> • Present/Q&amp;A <code class="text-sky-700 font-semibold">[T+5, T+45]</code> • Exit <code class="text-rose-700 font-semibold">[T+45, T+50]</code></span>
+        <span><strong>Debrief:</strong> <code class="text-slate-700 font-semibold">[T+50, T+60]</code></span>
+      </div>
+    </div>
+
+    <!-- 5 Room Cards Single-Row Grid -->
+    <section id="roomsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2.5">
+      <!-- Populated dynamically by JS -->
+    </section>
+
+    <!-- Full-Day Master Mini-Gantt Overview -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-2">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800">Full-Day Room Timeline &amp; Scrubbing Gantt (08:45 – 18:15)</h2>
+          <span class="text-[11px] text-slate-500 hidden sm:inline">Click anywhere on timeline to jump</span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px]">
+          <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-sky-600/85"></span>FinTech (F)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500/85"></span>Marketing (MKT)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-600/85"></span>Supply Chain (SC)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-0.5 h-3 bg-red-600"></span>Playhead</span>
+        </div>
+      </div>
+
+      <div id="masterGantt" class="overflow-x-auto">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. SCHEDULE DATA & CONSTANTS
+    // =========================================================================
+    const ROOMS = [
+      { id: '260-205', label: 'Room 260-205', defaultBct: 'Richelle' },
+      { id: '260-213', label: 'Room 260-213', defaultBct: 'Rohan' },
+      { id: '260-245', label: 'Room 260-245', defaultBct: 'Jet' },
+      { id: '260-307', label: 'Room 260-307', defaultBct: 'Riette' },
+      { id: '260-349', label: 'Room 260-349', defaultBct: 'Janna' }
+    ];
+
+    // Times in minutes from midnight (e.g., 09:00 = 540, 18:00 = 1080)
+    const RAW_SCHEDULE = [
+      { group: 'F07',   start: 540,  end: 600,  room: '260-205', bct: 'Richelle', gta: 'Haoyu Wang' },
+      { group: 'SC01',  start: 540,  end: 600,  room: '260-245', bct: 'Jet',      gta: 'Aakanksha' },
+
+      { group: 'F01',   start: 600,  end: 660,  room: '260-205', bct: 'Richelle', gta: 'Haoyu Wang' },
+      { group: 'F02',   start: 600,  end: 660,  room: '260-213', bct: 'Rohan',    gta: 'Yuqing Duan' },
+      { group: 'SC02',  start: 600,  end: 660,  room: '260-245', bct: 'Jet',      gta: 'Mina Khoshmehr' },
+
+      { group: 'F04',   start: 660,  end: 720,  room: '260-205', bct: 'Richelle', gta: 'Haoyu Wang' },
+      { group: 'F05',   start: 660,  end: 720,  room: '260-213', bct: 'Rohan',    gta: 'Yuqing Duan' },
+      { group: 'SC04',  start: 660,  end: 720,  room: '260-245', bct: 'Jet',      gta: 'Mina Khoshmehr' },
+
+      { group: 'MKT04', start: 720,  end: 780,  room: '260-307', bct: 'Riette',   gta: 'Yi Zhang' },
+
+      { group: 'F06',   start: 780,  end: 840,  room: '260-213', bct: 'Rohan',    gta: 'Yuqing Duan' },
+      { group: 'MKT03', start: 780,  end: 840,  room: '260-307', bct: 'Riette',   gta: 'Yi Zhang' },
+
+      { group: 'MKT02', start: 840,  end: 900,  room: '260-205', bct: 'Richelle', gta: 'Malek Affane' },
+      { group: 'SC05',  start: 840,  end: 900,  room: '260-245', bct: 'Jet',      gta: 'Mina Khoshmehr' },
+
+      { group: 'MKT01', start: 900,  end: 960,  room: '260-205', bct: 'Richelle', gta: 'Malek Affane' },
+      { group: 'MKT05', start: 900,  end: 960,  room: '260-213', bct: 'Rohan',    gta: 'Yi Zhang' },
+      { group: 'SC07',  start: 900,  end: 960,  room: '260-245', bct: 'Jet',      gta: 'Mina Khoshmehr' },
+      { group: 'SC08',  start: 900,  end: 960,  room: '260-349', bct: 'Janna',    gta: 'Hannah Liu' },
+      { group: 'SC09',  start: 900,  end: 960,  room: '260-307', bct: 'Riette',   gta: 'Aakanksha' },
+
+      { group: 'F03',   start: 960,  end: 1020, room: '260-213', bct: 'Rohan',    gta: 'Yuqing Duan' },
+      { group: 'SC03',  start: 960,  end: 1020, room: '260-307', bct: 'Riette',   gta: 'Aakanksha' },
+      { group: 'SC06',  start: 960,  end: 1020, room: '260-349', bct: 'Janna',    gta: 'Hannah Liu' },
+
+      { group: 'SC10',  start: 1020, end: 1080, room: '260-349', bct: 'Janna',    gta: 'Hannah Liu' }
+    ];
+
+    const TIMELINE_MIN = 525;  // 08:45
+    const TIMELINE_MAX = 1095; // 18:15
+    const TIMELINE_SPAN = TIMELINE_MAX - TIMELINE_MIN; // 570 minutes
+
+    // Precompute continuity flags per session (whether BCT or GTA stays put across boundary)
+    const SESSIONS = RAW_SCHEDULE.map(session => {
+      const prevInRoom = RAW_SCHEDULE.find(
+        s => s.room === session.room && s.end === session.start
+      );
+      const nextInRoom = RAW_SCHEDULE.find(
+        s => s.room === session.room && s.start === session.end
+      );
+
+      return {
+        ...session,
+        bctStaysFromPrev: Boolean(prevInRoom && prevInRoom.bct === session.bct),
+        bctStaysToNext: Boolean(nextInRoom && nextInRoom.bct === session.bct),
+        gtaStaysFromPrev: Boolean(prevInRoom && prevInRoom.gta === session.gta),
+        gtaStaysToNext: Boolean(nextInRoom && nextInRoom.gta === session.gta)
+      };
+    });
+
+    // =========================================================================
+    // 2. TIME FORMATTING HELPERS
+    // =========================================================================
+    function format24(mins) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function format12(mins) {
+      const h24 = Math.floor(mins / 60);
+      const m = mins % 60;
+      const period = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+    }
+
+    function getStreamBadgeStyle(group) {
+      if (group.startsWith('F')) {
+        return {
+          pill: 'bg-sky-100 text-sky-900 border-sky-300',
+          bar: 'bg-sky-600 hover:bg-sky-700 text-white'
+        };
+      }
+      if (group.startsWith('MKT')) {
+        return {
+          pill: 'bg-amber-100 text-amber-900 border-amber-300',
+          bar: 'bg-amber-500 hover:bg-amber-600 text-white'
+        };
+      }
+      return {
+        pill: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+        bar: 'bg-emerald-600 hover:bg-emerald-700 text-white'
+      };
+    }
+
+    // =========================================================================
+    // 3. STATE EVALUATION AT MINUTE `t`
+    // =========================================================================
+    /**
+     * Evaluates who is inside a given room, in the doorway (entering/leaving),
+     * or waiting in the corridor at time `t` (in minutes from midnight).
+     *
+     * Interval conventions (half-open [start, end) so transitions never double-count):
+     * - Staff (BCT / GTA):
+     *   * If !staysFromPrev: enters during [T_start - 5, T_start) -> status: 'Entering'
+     *   * Inside room during [T_start, T_end - 5) -> status: 'In Room'
+     *   * If staysToNext: remains inside room during [T_end - 5, T_end) -> status: 'In Room'
+     *   * If !staysToNext: leaves during [T_end - 5, T_end) -> status: 'Leaving'
+     * - Student Team:
+     *   * Arrives in corridor at T_start - 5: waiting during [T_start - 5, T_start) -> status: 'Waiting Outside'
+     *   * Enters room during [T_start, T_start + 5) -> status: 'Entering'
+     *   * Presents & Q&A during [T_start + 5, T_start + 45) -> status: 'Presenting / Q&A'
+     *   * Leaves room during [T_start + 45, T_start + 50) -> status: 'Leaving'
+     *   * [T_start + 50, T_end): Panel Debrief (team has departed)
+     */
+    function getRoomStateAtTime(roomId, t) {
+      const roomSessions = SESSIONS.filter(s => s.room === roomId);
+
+      const panelDesk = [];   // Seated/active inside room
+      const stageArea = [];   // Presenting/active inside room
+      const doorway = [];     // Entering or Leaving
+      const corridor = [];    // Waiting Outside
+
+      let phaseLabel = 'Room Vacant';
+      let phaseTone = 'vacant'; // 'vacant' | 'prep' | 'presenting' | 'debrief' | 'handover'
+      let activeSession = null;
+      let upcomingSession = null;
+
+      for (const s of roomSessions) {
+        const T0 = s.start;
+        const T1 = s.end;
+
+        // Track active or immediate next session for card header context
+        if (t >= T0 && t < T1) {
+          activeSession = s;
+        } else if (t >= T0 - 5 && t < T0 && !activeSession) {
+          upcomingSession = s;
+        }
+
+        // --- A. BCT Staff Evaluation ---
+        if (!s.bctStaysFromPrev && t >= T0 - 5 && t < T0) {
+          doorway.push({
+            name: s.bct,
+            role: 'BCT Staff',
+            status: 'Entering',
+            detail: `Arriving for ${s.group} (${format24(T0)})`
+          });
+        } else if (t >= T0 && t < T1 - 5) {
+          panelDesk.push({
+            name: s.bct,
+            role: 'BCT Staff',
+            status: 'In Room',
+            detail: s.bctStaysFromPrev && t < T0 + 5 ? 'Stayed from previous slot' : 'Assessing at panel desk'
+          });
+        } else if (t >= T1 - 5 && t < T1) {
+          if (s.bctStaysToNext) {
+            panelDesk.push({
+              name: s.bct,
+              role: 'BCT Staff',
+              status: 'In Room',
+              detail: 'Staying put for next slot'
+            });
+          } else {
+            doorway.push({
+              name: s.bct,
+              role: 'BCT Staff',
+              status: 'Leaving',
+              detail: 'Session complete — exiting'
+            });
+          }
+        }
+
+        // --- B. GTA Evaluation ---
+        if (!s.gtaStaysFromPrev && t >= T0 - 5 && t < T0) {
+          doorway.push({
+            name: s.gta,
+            role: 'GTA',
+            status: 'Entering',
+            detail: `Arriving for ${s.group} (${format24(T0)})`
+          });
+        } else if (t >= T0 && t < T1 - 5) {
+          panelDesk.push({
+            name: s.gta,
+            role: 'GTA',
+            status: 'In Room',
+            detail: s.gtaStaysFromPrev && t < T0 + 5 ? 'Stayed from previous slot' : 'Supporting at panel desk'
+          });
+        } else if (t >= T1 - 5 && t < T1) {
+          if (s.gtaStaysToNext) {
+            panelDesk.push({
+              name: s.gta,
+              role: 'GTA',
+              status: 'In Room',
+              detail: 'Staying put for next slot'
+            });
+          } else {
+            doorway.push({
+              name: s.gta,
+              role: 'GTA',
+              status: 'Leaving',
+              detail: 'Exiting room'
+            });
+          }
+        }
+
+        // --- C. Student Team Evaluation ---
+        if (t >= T0 - 5 && t < T0) {
+          corridor.push({
+            name: `Team ${s.group}`,
+            role: 'Student Team',
+            status: 'Waiting Outside',
+            detail: `Ready in corridor for ${format24(T0)} start`
+          });
+        } else if (t >= T0 && t < T0 + 5) {
+          doorway.push({
+            name: `Team ${s.group}`,
+            role: 'Student Team',
+            status: 'Entering',
+            detail: `Entering & setting up (${format24(T0)}–${format24(T0 + 5)})`
+          });
+        } else if (t >= T0 + 5 && t < T0 + 45) {
+          const isQA = t >= T0 + 35;
+          stageArea.push({
+            name: `Team ${s.group}`,
+            role: 'Student Team',
+            status: 'Presenting / Q&A',
+            detail: isQA
+              ? `Q&A Discussion (ends ${format24(T0 + 45)})`
+              : `Rehearsal Delivery (30m + 10m Q&A until ${format24(T0 + 45)})`
+          });
+        } else if (t >= T0 + 45 && t < T0 + 50) {
+          doorway.push({
+            name: `Team ${s.group}`,
+            role: 'Student Team',
+            status: 'Leaving',
+            detail: `45m elapsed — team exiting (${format24(T0 + 45)}–${format24(T0 + 50)})`
+          });
+        }
+      }
+
+      // Determine overall room phase banner
+      if (activeSession) {
+        const elapsed = t - activeSession.start;
+        if (elapsed < 5) {
+          phaseLabel = `${activeSession.group} Entering (${5 - elapsed}m)`;
+          phaseTone = 'prep';
+        } else if (elapsed < 35) {
+          phaseLabel = `${activeSession.group} Presenting (${35 - elapsed}m)`;
+          phaseTone = 'presenting';
+        } else if (elapsed < 45) {
+          phaseLabel = `${activeSession.group} Q&A (${45 - elapsed}m)`;
+          phaseTone = 'presenting';
+        } else if (elapsed < 50) {
+          phaseLabel = `${activeSession.group} Exiting (${50 - elapsed}m)`;
+          phaseTone = 'handover';
+        } else if (elapsed < 55) {
+          phaseLabel = `Panel Debrief (${55 - elapsed}m)`;
+          phaseTone = 'debrief';
+        } else {
+          // Last 5 mins [T+55, T+60)
+          const nextS = roomSessions.find(s => s.start === activeSession.end);
+          if (nextS) {
+            phaseLabel = `Handover → ${nextS.group} (${60 - elapsed}m)`;
+            phaseTone = 'handover';
+          } else {
+            phaseLabel = `Closing & Exit (${60 - elapsed}m)`;
+            phaseTone = 'debrief';
+          }
+        }
+      } else if (upcomingSession) {
+        const minsToStart = upcomingSession.start - t;
+        phaseLabel = `Setup (${upcomingSession.group} in ${minsToStart}m)`;
+        phaseTone = 'prep';
+      } else {
+        // Find next session later in the day
+        const nextLater = roomSessions.find(s => s.start > t);
+        if (nextLater) {
+          phaseLabel = `Idle • Next ${nextLater.group} ${format24(nextLater.start)}`;
+        } else {
+          phaseLabel = 'Idle • Done for Day';
+        }
+        phaseTone = 'vacant';
+      }
+
+      return {
+        roomSessions,
+        panelDesk,
+        stageArea,
+        doorway,
+        corridor,
+        phaseLabel,
+        phaseTone,
+        activeSession,
+        upcomingSession
+      };
+    }
+
+    // =========================================================================
+    // 4. RENDERING FUNCTIONS
+    // =========================================================================
+    function renderPersonBadge(person) {
+      let roleBorder = 'border-indigo-200 bg-indigo-50/70';
+      let roleTag = 'bg-indigo-600 text-white';
+      if (person.role === 'GTA') {
+        roleBorder = 'border-teal-200 bg-teal-50/70';
+        roleTag = 'bg-teal-600 text-white';
+      } else if (person.role === 'Student Team') {
+        roleBorder = 'border-amber-200 bg-amber-50/80';
+        roleTag = 'bg-amber-500 text-white';
+      }
+
+      let statusBadge = 'bg-sky-100 text-sky-800 border-sky-200';
+      let animClass = 'anim-in-room';
+      let icon = '●';
+
+      if (person.status === 'Entering') {
+        statusBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        animClass = 'anim-entering';
+        icon = '→';
+      } else if (person.status === 'Leaving') {
+        statusBadge = 'bg-rose-100 text-rose-800 border-rose-300';
+        animClass = 'anim-leaving';
+        icon = '←';
+      } else if (person.status === 'Waiting Outside') {
+        statusBadge = 'bg-amber-100 text-amber-900 border-amber-300';
+        animClass = 'anim-in-room';
+        icon = '⏳';
+      } else if (person.status === 'Presenting / Q&A') {
+        statusBadge = 'bg-sky-100 text-sky-900 border-sky-300';
+        animClass = 'anim-in-room';
+        icon = '🎤';
+      }
+
+      return `
+        <div class="px-2 py-1 rounded-md border ${roleBorder} ${animClass}">
+          <div class="flex items-center justify-between gap-1">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="text-[9px] font-bold uppercase px-1 py-0.2 rounded ${roleTag} shrink-0">${person.role === 'Student Team' ? 'Team' : person.role}</span>
+              <span class="text-[11px] font-bold text-slate-900 truncate">${person.name}</span>
+            </div>
+            <span class="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${statusBadge}">
+              <span>${icon}</span>
+              <span>${person.status === 'Presenting / Q&A' ? 'Active' : person.status}</span>
+            </span>
+          </div>
+          <div class="text-[10px] text-slate-600 truncate mt-0.5 leading-tight">${person.detail}</div>
+        </div>
+      `;
+    }
+
+    function getPhaseBannerClasses(tone) {
+      switch (tone) {
+        case 'presenting':
+          return 'bg-sky-50 text-sky-900 border-sky-200';
+        case 'prep':
+          return 'bg-emerald-50 text-emerald-900 border-emerald-200';
+        case 'handover':
+          return 'bg-amber-50 text-amber-900 border-amber-200';
+        case 'debrief':
+          return 'bg-indigo-50 text-indigo-900 border-indigo-200';
+        default:
+          return 'bg-slate-50 text-slate-500 border-slate-200';
+      }
+    }
+
+    function renderMiniRoomBar(roomSessions, currentTime) {
+      const playheadPct = ((currentTime - TIMELINE_MIN) / TIMELINE_SPAN) * 100;
+      const blocksHtml = roomSessions.map(s => {
+        const leftPct = ((s.start - TIMELINE_MIN) / TIMELINE_SPAN) * 100;
+        const widthPct = ((s.end - s.start) / TIMELINE_SPAN) * 100;
+        const style = getStreamBadgeStyle(s.group);
+        const isCurrent = currentTime >= s.start && currentTime < s.end;
+        return `
+          <div
+            onclick="jumpToTime(${s.start})"
+            title="${s.group}: ${format24(s.start)}–${format24(s.end)} (${s.bct} & ${s.gta})"
+            style="left: ${leftPct}%; width: ${widthPct}%;"
+            class="absolute top-0.5 bottom-0.5 rounded-sm ${style.bar} ${isCurrent ? 'ring-1 ring-slate-900 z-10' : 'opacity-85'} flex items-center justify-center text-[8px] font-bold cursor-pointer overflow-hidden transition">
+            ${s.group}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="pt-1.5 border-t border-slate-100">
+          <div class="relative h-4 bg-slate-100 rounded border border-slate-200 overflow-hidden">
+            ${blocksHtml}
+            <div style="left: ${playheadPct}%;" class="absolute top-0 bottom-0 w-0.5 bg-red-600 z-20 pointer-events-none"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAllRooms(t) {
+      const grid = document.getElementById('roomsGrid');
+      let activeRooms = 0;
+      let inTransit = 0;
+
+      const cardsHtml = ROOMS.map(room => {
+        const state = getRoomStateAtTime(room.id, t);
+        const isOccupied = state.panelDesk.length > 0 || state.stageArea.length > 0;
+        if (isOccupied) activeRooms++;
+        inTransit += state.doorway.length + state.corridor.length;
+
+        const cardBorder = state.phaseTone === 'presenting'
+          ? 'border-sky-400 ring-1 ring-sky-200'
+          : state.phaseTone === 'handover' || state.phaseTone === 'prep'
+          ? 'border-amber-300'
+          : 'border-slate-200';
+
+        const isDnd = state.phaseTone === 'presenting' || state.phaseTone === 'prep' || state.phaseTone === 'debrief';
+
+        return `
+          <article class="bg-white rounded-xl border ${cardBorder} shadow-sm flex flex-col justify-between overflow-hidden min-w-0 transition-all">
+            <div>
+              <!-- Room Card Header -->
+              <div class="px-2.5 py-2 bg-slate-900 text-white flex items-center justify-between gap-1.5">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="px-2 py-0.5 rounded bg-[#00467f] border border-sky-400/30 text-xs font-extrabold tracking-wide shrink-0">
+                    ${room.id}
+                  </span>
+                  <span class="text-[11px] text-slate-300 font-medium truncate">${room.defaultBct}</span>
+                </div>
+                ${isDnd
+                  ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-rose-600 text-white shrink-0">DND</span>`
+                  : `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-slate-700 text-slate-300 shrink-0">Open</span>`
+                }
+              </div>
+
+              <!-- Current Phase Status Strip -->
+              <div class="px-2.5 py-1.5 border-b text-[11px] font-semibold flex items-center justify-between gap-1 ${getPhaseBannerClasses(state.phaseTone)}">
+                <span class="truncate">${state.phaseLabel}</span>
+                ${state.activeSession
+                  ? `<span class="text-[10px] font-bold tabular-nums opacity-80 shrink-0">${format24(state.activeSession.start)}</span>`
+                  : ''
+                }
+              </div>
+
+              <!-- Floorplan Interior + Doorway + Corridor -->
+              <div class="p-2 space-y-2">
+
+                <!-- INSIDE ROOM ZONE -->
+                <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Inside Room</span>
+                    <span class="text-[9px] font-semibold text-slate-400">${state.panelDesk.length + state.stageArea.length} inside</span>
+                  </div>
+
+                  <!-- Panel Desk Sub-zone -->
+                  <div class="space-y-1">
+                    <div class="text-[10px] font-semibold text-slate-600">🪑 Panel Desk</div>
+                    ${state.panelDesk.length > 0
+                      ? state.panelDesk.map(renderPersonBadge).join('')
+                      : `<div class="text-[10px] text-slate-400 italic px-2 py-1 rounded border border-dashed border-slate-200 bg-white/60">Empty</div>`
+                    }
+                  </div>
+
+                  <!-- Presentation Area Sub-zone -->
+                  <div class="space-y-1">
+                    <div class="text-[10px] font-semibold text-slate-600">📽️ Stage / Screen</div>
+                    ${state.stageArea.length > 0
+                      ? state.stageArea.map(renderPersonBadge).join('')
+                      : `<div class="text-[10px] text-slate-400 italic px-2 py-1 rounded border border-dashed border-slate-200 bg-white/60">No presenter</div>`
+                    }
+                  </div>
+                </div>
+
+                <!-- DOORWAY / ENTRYWAY TRANSITION ZONE -->
+                <div class="rounded-lg border border-dashed ${state.doorway.length > 0 ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-200 bg-white'} p-2 space-y-1">
+                  <div class="text-[9px] font-extrabold uppercase tracking-wider ${state.doorway.length > 0 ? 'text-emerald-800' : 'text-slate-400'}">
+                    🚪 Doorway
+                  </div>
+                  ${state.doorway.length > 0
+                    ? state.doorway.map(renderPersonBadge).join('')
+                    : `<div class="text-[10px] text-slate-400">Clear</div>`
+                  }
+                </div>
+
+                <!-- OUTSIDE CORRIDOR / WAITING AREA -->
+                <div class="rounded-lg border ${state.corridor.length > 0 ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200 bg-slate-50/40'} p-2 space-y-1">
+                  <div class="text-[9px] font-extrabold uppercase tracking-wider ${state.corridor.length > 0 ? 'text-amber-800' : 'text-slate-400'}">
+                    🚶 Corridor
+                  </div>
+                  ${state.corridor.length > 0
+                    ? state.corridor.map(renderPersonBadge).join('')
+                    : `<div class="text-[10px] text-slate-400">Clear</div>`
+                  }
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Room Mini Gantt -->
+            <div class="px-2 pb-2">
+              ${renderMiniRoomBar(state.roomSessions, t)}
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      grid.innerHTML = cardsHtml;
+      document.getElementById('activeRoomCount').textContent = activeRooms;
+      document.getElementById('transitCount').textContent = inTransit;
+    }
+
+    function renderMasterGantt(t) {
+      const container = document.getElementById('masterGantt');
+      const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+      const playheadPct = ((t - TIMELINE_MIN) / TIMELINE_SPAN) * 100;
+
+      const hourMarkersHtml = hours.map(h => {
+        const mins = h * 60;
+        const leftPct = ((mins - TIMELINE_MIN) / TIMELINE_SPAN) * 100;
+        return `
+          <div style="left: ${leftPct}%;" class="absolute top-0 bottom-0 border-l border-slate-200 pointer-events-none">
+            <span class="text-[9px] font-semibold text-slate-500 pl-1 tabular-nums">${String(h).padStart(2, '0')}:00</span>
+          </div>
+        `;
+      }).join('');
+
+      const rowsHtml = ROOMS.map(room => {
+        const roomSessions = SESSIONS.filter(s => s.room === room.id);
+        const blocks = roomSessions.map(s => {
+          const leftPct = ((s.start - TIMELINE_MIN) / TIMELINE_SPAN) * 100;
+          const widthPct = ((s.end - s.start) / TIMELINE_SPAN) * 100;
+          const style = getStreamBadgeStyle(s.group);
+          const isCurrent = t >= s.start && t < s.end;
+
+          return `
+            <div
+              onclick="event.stopPropagation(); jumpToTime(${s.start});"
+              title="${s.group} (${format24(s.start)}–${format24(s.end)}) • BCT: ${s.bct} | GTA: ${s.gta}"
+              style="left: ${leftPct}%; width: ${widthPct}%;"
+              class="absolute top-0.5 bottom-0.5 rounded ${style.bar} ${isCurrent ? 'ring-2 ring-slate-900 shadow-sm z-10' : 'opacity-90'} px-1.5 flex items-center justify-between gap-1 cursor-pointer transition overflow-hidden">
+              <span class="text-[10px] font-extrabold leading-none truncate">${s.group}</span>
+              <span class="text-[9px] leading-none opacity-90 truncate hidden md:inline">${s.gta.split(' ')[0]}</span>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="flex items-center border-b border-slate-100 last:border-b-0">
+            <div class="w-24 shrink-0 py-1 pr-2 text-[11px] font-bold text-slate-800 leading-tight">
+              <div>${room.id} <span class="text-[9px] font-normal text-slate-500">(${room.defaultBct})</span></div>
+            </div>
+            <div class="gantt-track relative flex-1 h-7 bg-slate-50/70 cursor-crosshair">
+              ${blocks}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="min-w-[680px] select-none">
+          <!-- Time Axis Header -->
+          <div class="flex items-center border-b border-slate-200 pb-0.5">
+            <div class="w-24 shrink-0 text-[9px] font-bold uppercase tracking-wider text-slate-400">Room (BCT)</div>
+            <div class="gantt-track relative flex-1 h-4 cursor-crosshair">
+              ${hourMarkersHtml}
+            </div>
+          </div>
+
+          <!-- Room Rows + Continuous Vertical Playhead -->
+          <div class="relative">
+            ${rowsHtml}
+            <!-- Playhead overlay aligned to track area -->
+            <div class="absolute top-0 bottom-0 left-24 right-0 pointer-events-none">
+              <div style="left: ${playheadPct}%;" class="absolute top-0 bottom-0 w-0.5 bg-red-600 z-20">
+                <div class="-translate-x-1/2 -top-1 relative w-2 h-2 rounded-full bg-red-600 shadow"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Attach click-to-scrub listeners on tracks
+      container.querySelectorAll('.gantt-track').forEach(track => {
+        track.addEventListener('click', (e) => {
+          const rect = track.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const clickedMin = Math.round(TIMELINE_MIN + ratio * TIMELINE_SPAN);
+          jumpToTime(clickedMin);
+        });
+      });
+    }
+
+    // =========================================================================
+    // 5. PLAYBACK CONTROLLER & EVENT WIRING
+    // =========================================================================
+    let currentTime = 536; // Start at 08:56 so user immediately sees initial panel arrivals + corridor waiting
+    let isPlaying = false;
+    let speedMultiplier = 1;
+    let lastFrameTs = null;
+    let minuteAccumulator = 0;
+
+    const slider = document.getElementById('timeSlider');
+    const clock24 = document.getElementById('clock24');
+    const clock12 = document.getElementById('clock12');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const playLabel = document.getElementById('playLabel');
+
+    function updateSimulation(newTime) {
+      currentTime = Math.max(TIMELINE_MIN, Math.min(TIMELINE_MAX, Math.round(newTime)));
+      slider.value = currentTime;
+      clock24.textContent = format24(currentTime);
+      clock12.textContent = format12(currentTime);
+
+      renderAllRooms(currentTime);
+      renderMasterGantt(currentTime);
+    }
+
+    window.jumpToTime = function(mins) {
+      updateSimulation(mins);
+    };
+
+    function setPlaying(play) {
+      isPlaying = play;
+      if (isPlaying) {
+        if (currentTime >= TIMELINE_MAX) {
+          updateSimulation(TIMELINE_MIN);
+        }
+        playIcon.textContent = '⏸';
+        playLabel.textContent = 'Pause';
+        lastFrameTs = performance.now();
+        minuteAccumulator = 0;
+        requestAnimationFrame(tick);
+      } else {
+        playIcon.textContent = '▶';
+        playLabel.textContent = 'Play';
+        lastFrameTs = null;
+      }
+    }
+
+    // At 1x speed, 1 simulated minute advances every 1.0 real second so transitions are easy to watch
+    function tick(now) {
+      if (!isPlaying) return;
+      if (lastFrameTs !== null) {
+        const dtSeconds = (now - lastFrameTs) / 1000;
+        minuteAccumulator += dtSeconds * speedMultiplier;
+        if (minuteAccumulator >= 1) {
+          const steps = Math.floor(minuteAccumulator);
+          minuteAccumulator -= steps;
+          if (currentTime + steps >= TIMELINE_MAX) {
+            updateSimulation(TIMELINE_MAX);
+            setPlaying(false);
+            return;
+          } else {
+            updateSimulation(currentTime + steps);
+          }
+        }
+      }
+      lastFrameTs = now;
+      requestAnimationFrame(tick);
+    }
+
+    slider.addEventListener('input', (e) => {
+      updateSimulation(Number(e.target.value));
+    });
+
+    playPauseBtn.addEventListener('click', () => {
+      setPlaying(!isPlaying);
+    });
+
+    document.getElementById('stepBackBtn').addEventListener('click', () => {
+      setPlaying(false);
+      updateSimulation(currentTime - 1);
+    });
+
+    document.getElementById('stepFwdBtn').addEventListener('click', () => {
+      setPlaying(false);
+      updateSimulation(currentTime + 1);
+    });
+
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        speedMultiplier = Number(btn.dataset.speed);
+        document.querySelectorAll('.speed-btn').forEach(b => {
+          b.className = 'speed-btn px-2 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900 transition';
+        });
+        btn.className = 'speed-btn px-2 py-1 rounded-md text-xs font-bold transition bg-white text-[#00467f] shadow-sm';
+      });
+    });
+
+    document.querySelectorAll('.jump-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setPlaying(false);
+        updateSimulation(Number(btn.dataset.time));
+      });
+    });
+    // Keyboard shortcuts: Space to play/pause, Left/Right arrows to step 1 minute (Shift+Arrow steps 5m)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      const step = e.shiftKey ? 5 : 1;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setPlaying(!isPlaying);
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        setPlaying(false);
+        updateSimulation(currentTime - step);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setPlaying(false);
+        updateSimulation(currentTime + step);
+      }
+    });
+
+    // Initial render
+    updateSimulation(currentTime);
+  </script>
+</body>
+</html>
