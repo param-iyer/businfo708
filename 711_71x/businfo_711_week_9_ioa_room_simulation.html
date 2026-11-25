@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BUSINFO 711 • Week 9 IOA Room Simulation (Thu 26 – Fri 27 Nov)</title>
+  <style>
+    /* =========================================================================
+       1. RESET & BASE TYPOGRAPHY (100% self-contained, zero CDN dependency)
+       ========================================================================= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-size: 13px;
+      line-height: 1.35;
+      min-height: 100vh;
+    }
+
+    /* =========================================================================
+       2. TOP HEADER & LIVE CLOCK BAR
+       ========================================================================= */
+    .app-header {
+      background-color: #00467f;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #bae6fd;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+    .clock-box {
+      background: rgba(15, 23, 42, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .day-pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background-color: #7dd3fc;
+      color: #082f49;
+    }
+    .day-pill.fri {
+      background-color: #6ee7b7;
+      color: #064e3b;
+    }
+    .day-pill.brk {
+      background-color: #fcd34d;
+      color: #451a03;
+    }
+    .clock-24 {
+      font-size: 20px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .clock-12 {
+      font-size: 11px;
+      font-weight: 600;
+      color: #bae6fd;
+      font-variant-numeric: tabular-nums;
+    }
+    .clock-divider {
+      width: 1px;
+      height: 26px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .stat-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+    }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-green { background-color: #34d399; }
+    .dot-amber { background-color: #fbbf24; }
+
+    /* =========================================================================
+       3. CONTROLS & SLIDER WITH EXPLICIT BREAK TRACK
+       ========================================================================= */
+    .controls-bar {
+      background-color: #ffffff;
+      color: #1e293b;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .controls-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .scrubber-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .btn {
+      border: 1px solid #cbd5e1;
+      background-color: #f8fafc;
+      color: #334155;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.12s, border-color 0.12s;
+      user-select: none;
+    }
+    .btn:hover {
+      background-color: #e2e8f0;
+    }
+    .btn-primary {
+      background-color: #00467f;
+      border-color: #00467f;
+      color: #ffffff;
+      min-width: 78px;
+    }
+    .btn-primary:hover {
+      background-color: #0369a1;
+      border-color: #0369a1;
+    }
+
+    /* Custom Slider + Proportional Track (Thu | Break | Fri) */
+    .slider-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .edge-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .track-container {
+      position: relative;
+      flex: 1;
+      height: 28px;
+      display: flex;
+      align-items: center;
+    }
+    .visual-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 7px;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid #94a3b8;
+      pointer-events: none;
+    }
+    .seg-thu {
+      background-color: #bae6fd;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: #0369a1;
+      letter-spacing: 0.04em;
+    }
+    .seg-brk {
+      background: repeating-linear-gradient(
+        -45deg,
+        #fde68a,
+        #fde68a 5px,
+        #f59e0b 5px,
+        #f59e0b 10px
+      );
+      height: 100%;
+      border-left: 1.5px solid #b45309;
+      border-right: 1.5px solid #b45309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .seg-brk-tag {
+      background-color: #78350f;
+      color: #ffffff;
+      font-size: 8.5px;
+      font-weight: 800;
+      padding: 0 4px;
+      border-radius: 3px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .seg-fri {
+      background-color: #a7f3d0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: #047857;
+      letter-spacing: 0.04em;
+    }
+
+    input[type="range"]#timeSlider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 28px;
+      background: transparent;
+      position: relative;
+      z-index: 5;
+      cursor: pointer;
+      margin: 0;
+    }
+    input[type="range"]#timeSlider::-webkit-slider-runnable-track {
+      height: 14px;
+      background: transparent;
+    }
+    input[type="range"]#timeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 22px;
+      border-radius: 5px;
+      background-color: #00467f;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 1px 5px rgba(15, 23, 42, 0.45);
+      margin-top: -4px;
+      cursor: grab;
+    }
+    input[type="range"]#timeSlider::-webkit-slider-thumb:hover {
+      background-color: #0284c7;
+      transform: scale(1.08);
+    }
+    input[type="range"]#timeSlider::-moz-range-track {
+      height: 14px;
+      background: transparent;
+    }
+    input[type="range"]#timeSlider::-moz-range-thumb {
+      width: 18px;
+      height: 22px;
+      border-radius: 5px;
+      background-color: #00467f;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 1px 5px rgba(15, 23, 42, 0.45);
+      cursor: grab;
+    }
+
+    .speed-box {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 2px;
+      flex-shrink: 0;
+    }
+    .speed-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      padding: 0 5px;
+    }
+    .speed-btn {
+      border: none;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      padding: 3px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .speed-btn.active {
+      background-color: #ffffff;
+      color: #00467f;
+      font-weight: 800;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Quick-Jump & Legend Row */
+    .jumps-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 5px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .jump-list {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .jump-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-right: 2px;
+    }
+    .jump-btn {
+      border: 1px solid #cbd5e1;
+      background-color: #f8fafc;
+      color: #334155;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .jump-btn:hover {
+      background-color: #e0f2fe;
+      border-color: #7dd3fc;
+      color: #00467f;
+    }
+    .jump-btn.amber {
+      background-color: #fffbeb;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+    .jump-btn.amber:hover {
+      background-color: #fef3c7;
+    }
+    .jump-btn.green {
+      background-color: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #065f46;
+    }
+    .jump-btn.green:hover {
+      background-color: #d1fae5;
+    }
+    .legend-list {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10.5px;
+      color: #475569;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+    .swatch {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    /* =========================================================================
+       4. MAIN WORKSPACE, STATUS BANNER & 3-COLUMN FIXED-HEIGHT ROOM GRID
+       ========================================================================= */
+    .main-wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 10px 16px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Fixed-height status / overnight break banner (zero vertical shift) */
+    .status-banner {
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .status-banner.is-break {
+      background-color: #451a03;
+      border-color: #d97706;
+      color: #fef3c7;
+    }
+    .banner-text {
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .banner-text code {
+      background-color: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .skip-break-btn {
+      background-color: #f59e0b;
+      color: #1e1b4b;
+      border: none;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .skip-break-btn:hover {
+      background-color: #fbbf24;
+    }
+    .hidden {
+      display: none !important;
+    }
+
+    /* Single-row 3-column grid for all 3 IOA rooms */
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 960px) {
+      .rooms-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Room Card with Strict Fixed-Height Internal Zones */
+    .room-card {
+      background-color: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .room-card.active-session {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.16);
+    }
+    .room-card.handover-session {
+      border-color: #f59e0b;
+    }
+
+    /* Fixed 34px Room Header */
+    .room-header {
+      height: 34px;
+      padding: 0 10px;
+      background-color: #0f172a;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .room-id-pill {
+      background-color: #00467f;
+      border: 1px solid rgba(125, 211, 252, 0.4);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 5px;
+      letter-spacing: 0.02em;
+    }
+    .room-sub {
+      font-size: 11px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .dnd-pill {
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background-color: #dc2626;
+      color: #ffffff;
+    }
+    .dnd-pill.open {
+      background-color: #334155;
+      color: #cbd5e1;
+    }
+
+    /* Fixed 26px Phase Strip */
+    .phase-strip {
+      height: 26px;
+      padding: 0 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .phase-strip.vacant   { background-color: #f8fafc; color: #64748b; }
+    .phase-strip.prep     { background-color: #ecfdf5; color: #065f46; border-bottom-color: #a7f3d0; }
+    .phase-strip.active   { background-color: #f0f9ff; color: #075985; border-bottom-color: #bae6fd; }
+    .phase-strip.handover { background-color: #fffbeb; color: #92400e; border-bottom-color: #fde68a; }
+    .phase-strip.debrief  { background-color: #eef2ff; color: #3730a3; border-bottom-color: #c7d2fe; }
+
+    /* Room Interior Container */
+    .room-zones {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Zone 1: Inside Room (Fixed 108px height: header + up to 3 single-line 24px badges) */
+    .zone-inside {
+      height: 108px;
+      min-height: 108px;
+      max-height: 108px;
+      border: 1px solid #cbd5e1;
+      background-color: #f8fafc;
+      border-radius: 7px;
+      padding: 5px 7px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Zone 2: Doorway (Fixed 126px height: header + up to 4 single-line 22px badges for 2 out / 2 in) */
+    .zone-doorway {
+      height: 126px;
+      min-height: 126px;
+      max-height: 126px;
+      border: 1px dashed #cbd5e1;
+      background-color: #ffffff;
+      border-radius: 7px;
+      padding: 5px 7px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .zone-doorway.has-traffic {
+      border-color: #10b981;
+      background-color: #ecfdf5;
+    }
+
+    /* Zone 3: Corridor Waiting (Fixed 54px height: header + full 24px waiting badge with bottom padding) */
+    .zone-corridor {
+      height: 54px;
+      min-height: 54px;
+      max-height: 54px;
+      border: 1px solid #e2e8f0;
+      background-color: #f8fafc;
+      border-radius: 7px;
+      padding: 5px 7px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .zone-corridor.has-waiting {
+      border-color: #f59e0b;
+      background-color: #fffbeb;
+    }
+
+    .zone-hdr {
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475569;
+      flex-shrink: 0;
+    }
+    .badge-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .zone-doorway .badge-stack {
+      gap: 3px;
+    }
+    .empty-slot {
+      height: 24px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 5px;
+      background-color: rgba(255, 255, 255, 0.65);
+      color: #94a3b8;
+      font-size: 10.5px;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* =========================================================================
+       5. SINGLE-LINE COMPACT PERSON BADGES
+       ========================================================================= */
+    .p-badge {
+      height: 24px;
+      min-height: 24px;
+      max-height: 24px;
+      padding: 0 7px;
+      border-radius: 5px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    .zone-doorway .p-badge {
+      height: 22px;
+      min-height: 22px;
+      max-height: 22px;
+    }
+    .p-badge.role-sup  { background-color: #eef2ff; border-color: #c7d2fe; }
+    .p-badge.role-gta  { background-color: #f0fdfa; border-color: #99f6e4; }
+    .p-badge.role-team { background-color: #fffbeb; border-color: #fde68a; }
+
+    .p-left {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .role-pill {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #ffffff;
+      flex-shrink: 0;
+      line-height: 1.1;
+    }
+    .role-pill.sup  { background-color: #4f46e5; }
+    .role-pill.gta  { background-color: #0d9488; }
+    .role-pill.team { background-color: #d97706; }
+
+    .p-text {
+      font-size: 11px;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .p-text strong {
+      font-weight: 800;
+    }
+    .p-text span {
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .state-tag {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+    .state-tag.in      { background-color: #e0f2fe; color: #075985; border-color: #bae6fd; }
+    .state-tag.enter   { background-color: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+    .state-tag.leave   { background-color: #ffe4e6; color: #9f1239; border-color: #fda4af; }
+    .state-tag.waiting { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+
+    /* Room Mini-Bar Footer */
+    .room-footer {
+      padding: 0 8px 8px 8px;
+    }
+    .mini-bar {
+      position: relative;
+      height: 16px;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    /* =========================================================================
+       6. MASTER 2-DAY GANTT CHART
+       ========================================================================= */
+    .gantt-card {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+    .gantt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .gantt-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #1e293b;
+    }
+    .gantt-scroll {
+      overflow-x: auto;
+    }
+    .gantt-inner {
+      min-width: 780px;
+      user-select: none;
+    }
+    .gantt-axis-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+    }
+    .gantt-label-col {
+      width: 74px;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 800;
+      color: #1e293b;
+    }
+    .gantt-track {
+      position: relative;
+      flex: 1;
+      height: 26px;
+      background-color: #f8fafc;
+      cursor: crosshair;
+    }
+    .gantt-axis-track {
+      position: relative;
+      flex: 1;
+      height: 16px;
+      cursor: crosshair;
+    }
+    .gantt-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .gantt-row:last-child {
+      border-bottom: none;
+    }
+    .g-block {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      border-radius: 4px;
+      color: #ffffff;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 0 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .g-block.f   { background-color: #0284c7; }
+    .g-block.mkt { background-color: #d97706; }
+    .g-block.sc  { background-color: #059669; }
+    .g-block.is-now {
+      outline: 2px solid #0f172a;
+      z-index: 10;
+    }
+    .g-break-band {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        #fef3c7,
+        #fef3c7 5px,
+        #fde68a 5px,
+        #fde68a 10px
+      );
+      border-left: 1px solid #f59e0b;
+      border-right: 1px solid #f59e0b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+      font-weight: 800;
+      color: #92400e;
+      pointer-events: none;
+    }
+    .playhead-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #dc2626;
+      z-index: 20;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER & CLOCK -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <div class="header-kicker">University of Auckland Business School • BUSINFO 711 • Thu 26 – Fri 27 Nov 2026</div>
+        <h1 class="header-title">Week 9 Individual Oral Assessments (IOAs) — Live Room &amp; Movement Simulator</h1>
+      </div>
+
+      <div class="clock-box">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:1px;">
+            <span id="dayPill" class="day-pill">Thu 26 Nov</span>
+            <span style="font-size:9.5px;text-transform:uppercase;color:#bae6fd;font-weight:700;">Sim Time</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span id="clock24" class="clock-24">11:00</span>
+            <span id="clock12" class="clock-12">11:00 AM</span>
+          </div>
+        </div>
+        <div class="clock-divider"></div>
+        <div class="stat-col">
+          <div class="stat-row">
+            <span class="dot dot-green"></span>
+            <span>Active Rooms: <strong id="activeRoomCount">1</strong>/3</span>
+          </div>
+          <div class="stat-row">
+            <span class="dot dot-amber"></span>
+            <span>Door / Corridor: <strong id="transitCount">1</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDER & PLAYBACK CONTROLS -->
+    <div class="controls-bar">
+      <div class="controls-inner">
+        <div class="scrubber-row">
+          <div class="btn-group">
+            <button id="stepBackBtn" class="btn" title="Back 1 minute (Left Arrow)">-1m</button>
+            <button id="playPauseBtn" class="btn btn-primary">
+              <span id="playIcon">▶</span> <span id="playLabel">Play</span>
+            </button>
+            <button id="stepFwdBtn" class="btn" title="Forward 1 minute (Right Arrow)">+1m</button>
+          </div>
+
+          <!-- Slider with proportional Thu | Overnight Break | Fri track -->
+          <div class="slider-wrap">
+            <span class="edge-label">Thu 10:45</span>
+            <div class="track-container">
+              <div class="visual-track" id="visualTrack">
+                <div class="seg-thu" style="width:36.58%">THU 26</div>
+                <div class="seg-brk" style="width:4.22%"><span class="seg-brk-tag">BREAK</span></div>
+                <div class="seg-fri" style="width:59.20%">FRI 27</div>
+              </div>
+              <input id="timeSlider" type="range" min="0" max="1066" step="1" value="15" />
+            </div>
+            <span class="edge-label">Fri 19:15</span>
+          </div>
+
+          <div class="speed-box">
+            <span class="speed-label">Speed:</span>
+            <button data-speed="1" class="speed-btn active">1x</button>
+            <button data-speed="5" class="speed-btn">5x</button>
+            <button data-speed="15" class="speed-btn">15x</button>
+            <button data-speed="30" class="speed-btn">30x</button>
+          </div>
+        </div>
+
+        <!-- Quick-Jump Buttons & Role Legend -->
+        <div class="jumps-row">
+          <div class="jump-list">
+            <span class="jump-tag">Jump:</span>
+            <button data-tick="10" class="jump-btn">Thu 10:55 Setup</button>
+            <button data-tick="15" class="jump-btn">Thu 11:00 F07</button>
+            <button data-tick="72" class="jump-btn amber">Thu 11:57 Handover</button>
+            <button data-tick="413" class="jump-btn amber">Overnight Break</button>
+            <button data-tick="446" class="jump-btn green">Fri 08:55 Setup</button>
+            <button data-tick="451" class="jump-btn green">Fri 09:00 Start</button>
+            <button data-tick="688" class="jump-btn amber">Fri 12:57 Double Swap</button>
+            <button data-tick="811" class="jump-btn green">Fri 15:00 Peak</button>
+            <button data-tick="1038" class="jump-btn">Fri 18:47 Final Exit</button>
+          </div>
+
+          <div class="legend-list">
+            <span class="legend-item"><span class="swatch" style="background:#4f46e5;"></span>Sup</span>
+            <span class="legend-item"><span class="swatch" style="background:#0d9488;"></span>GTA</span>
+            <span class="legend-item"><span class="swatch" style="background:#d97706;"></span>Team</span>
+            <span style="color:#cbd5e1;">|</span>
+            <span class="state-tag enter">Entering</span>
+            <span class="state-tag in">In Room</span>
+            <span class="state-tag leave">Exiting</span>
+            <span class="state-tag waiting">Corridor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-wrap">
+    <!-- Status / Overnight Break Banner -->
+    <div id="statusBanner" class="status-banner">
+      <div id="bannerText" class="banner-text">
+        <strong>IOA Cycle (<code>T</code>–<code>T+60</code>):</strong>
+        Sup &amp; GTA enter <code>[T-5, T)</code> (or stay put) • Team waits <code>T-5</code>, enters <code>[T, T+5)</code>, IOA <code>[T+5, T+45)</code>, exits <code>[T+45, T+50)</code> • Debrief <code>[T+50, T+60)</code>
+      </div>
+      <button id="skipBreakBtn" class="skip-break-btn hidden">Jump to Fri 08:55 →</button>
+    </div>
+
+    <!-- 3 IOA ROOMS IN A SINGLE HORIZONTAL ROW (Pre-populated with initial state so first block is immediately visible) -->
+    <section id="roomsGrid" class="rooms-grid">
+      <!-- Room 260-307 Initial Fallback -->
+      <article class="room-card handover-session">
+        <div class="room-header">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="room-id-pill">Room 260-307</span>
+            <span class="room-sub">10 IOAs</span>
+          </div>
+          <span class="dnd-pill">Do Not Disturb</span>
+        </div>
+        <div class="phase-strip prep">
+          <span>F07 Entering (5m left)</span>
+          <span>11:00–12:00</span>
+        </div>
+        <div class="room-zones">
+          <div class="zone-inside">
+            <div class="zone-hdr"><span>🪑 Inside Room (Panel &amp; IOA)</span><span>2 inside</span></div>
+            <div class="badge-stack">
+              <div class="p-badge role-sup"><div class="p-left"><span class="role-pill sup">Sup</span><span class="p-text"><strong>LeoX</strong> <span>· Assessing IOA at panel desk</span></span></div><span class="state-tag in">● In Room</span></div>
+              <div class="p-badge role-gta"><div class="p-left"><span class="role-pill gta">GTA</span><span class="p-text"><strong>Haoyu</strong> <span>· Timing &amp; marking support</span></span></div><span class="state-tag in">● In Room</span></div>
+            </div>
+          </div>
+          <div class="zone-doorway has-traffic">
+            <div class="zone-hdr"><span>🚪 Doorway (Entering / Exiting)</span><span>1 moving</span></div>
+            <div class="badge-stack">
+              <div class="p-badge role-team"><div class="p-left"><span class="role-pill team">Team</span><span class="p-text"><strong>F07</strong> <span>· Entering room (11:00–11:05)</span></span></div><span class="state-tag enter">→ Entering</span></div>
+            </div>
+          </div>
+          <div class="zone-corridor">
+            <div class="zone-hdr"><span>🚶 Corridor Waiting</span><span>Next F06 12:00</span></div>
+            <div class="empty-slot">Corridor clear</div>
+          </div>
+        </div>
+      </article>
+      <!-- Room 260-315 Initial Fallback -->
+      <article class="room-card">
+        <div class="room-header">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="room-id-pill">Room 260-315</span>
+            <span class="room-sub">8 IOAs</span>
+          </div>
+          <span class="dnd-pill open">Open</span>
+        </div>
+        <div class="phase-strip vacant"><span>Vacant • Next: MKT01 at 13:00</span></div>
+        <div class="room-zones">
+          <div class="zone-inside"><div class="zone-hdr"><span>🪑 Inside Room (Panel &amp; IOA)</span><span>0 inside</span></div><div class="empty-slot">Room interior empty</div></div>
+          <div class="zone-doorway"><div class="zone-hdr"><span>🚪 Doorway (Entering / Exiting)</span><span>0 moving</span></div><div class="empty-slot">Doorway clear</div></div>
+          <div class="zone-corridor"><div class="zone-hdr"><span>🚶 Corridor Waiting</span><span>Next MKT01 13:00</span></div><div class="empty-slot">Corridor clear</div></div>
+        </div>
+      </article>
+      <!-- Room 260-349 Initial Fallback -->
+      <article class="room-card">
+        <div class="room-header">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="room-id-pill">Room 260-349</span>
+            <span class="room-sub">4 IOAs</span>
+          </div>
+          <span class="dnd-pill open">Open</span>
+        </div>
+        <div class="phase-strip vacant"><span>Done for Thu • Resumes Fri</span></div>
+        <div class="room-zones">
+          <div class="zone-inside"><div class="zone-hdr"><span>🪑 Inside Room (Panel &amp; IOA)</span><span>0 inside</span></div><div class="empty-slot">Room interior empty</div></div>
+          <div class="zone-doorway"><div class="zone-hdr"><span>🚪 Doorway (Entering / Exiting)</span><span>0 moving</span></div><div class="empty-slot">Doorway clear</div></div>
+          <div class="zone-corridor"><div class="zone-hdr"><span>🚶 Corridor Waiting</span><span>Fri 09:00</span></div><div class="empty-slot">Corridor clear</div></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 2-DAY MASTER GANTT TIMELINE -->
+    <section class="gantt-card">
+      <div class="gantt-header">
+        <div class="gantt-title">2-Day IOA Schedule &amp; Scrubbing Gantt (Thu 10:45 – Fri 19:15 • Click anywhere to jump)</div>
+        <div class="legend-list">
+          <span class="legend-item"><span class="swatch" style="background:#0284c7;"></span>FinTech (F)</span>
+          <span class="legend-item"><span class="swatch" style="background:#d97706;"></span>Marketing (MKT)</span>
+          <span class="legend-item"><span class="swatch" style="background:#059669;"></span>Supply Chain (SC)</span>
+          <span class="legend-item"><span style="display:inline-block;width:2px;height:11px;background:#dc2626;"></span>Playhead</span>
+        </div>
+      </div>
+      <div id="masterGantt" class="gantt-scroll"></div>
+    </section>
+  </main>
+
+  <!-- SYNCHRONOUS INLINE SCRIPT (Clean ES5-compatible syntax, zero external deps) -->
+  <script>
+    (function () {
+      // =======================================================================
+      // 1. TIMELINE SCALE (Thu 10:45–17:15 | 45-tick Break | Fri 08:45–19:15)
+      // =======================================================================
+      var THU_START = 645;   // 10:45 (tick 0)
+      var THU_END   = 1035;  // 17:15 (tick 390)
+      var THU_SPAN  = THU_END - THU_START; // 390 ticks (0 .. 390)
+
+      var BREAK_SPAN = 45;   // 45 ticks compressed visual bridge (391 .. 435)
+      var FRI_OFFSET = THU_SPAN + BREAK_SPAN + 1; // 436 -> Fri 08:45
+
+      var FRI_START = 525;   // 08:45 (tick 436)
+      var FRI_END   = 1155;  // 19:15 (tick 1066)
+      var FRI_SPAN  = FRI_END - FRI_START; // 630 ticks
+
+      var TOTAL_TICKS = FRI_OFFSET + FRI_SPAN; // 1066
+
+      function encodeTick(day, mins) {
+        if (day === 'THU') return mins - THU_START;
+        return FRI_OFFSET + (mins - FRI_START);
+      }
+
+      function decodeTick(tick) {
+        if (tick <= THU_SPAN) {
+          return { day: 'THU', dayLabel: 'Thu 26 Nov', mins: THU_START + tick, isBreak: false };
+        }
+        if (tick < FRI_OFFSET) {
+          var ratio = (tick - THU_SPAN) / (BREAK_SPAN + 1);
+          var rawMins = Math.round(1035 + ratio * (1440 - 1035 + 525));
+          var displayMins = rawMins >= 1440 ? rawMins - 1440 : rawMins;
+          return { day: 'BREAK', dayLabel: 'Overnight Break', mins: displayMins, isBreak: true };
+        }
+        return {
+          day: 'FRI',
+          dayLabel: 'Fri 27 Nov',
+          mins: FRI_START + (tick - FRI_OFFSET),
+          isBreak: false
+        };
+      }
+
+      function format24(mins) {
+        var h = Math.floor(mins / 60);
+        var m = mins % 60;
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+      }
+
+      function format12(mins) {
+        var h24 = Math.floor(mins / 60);
+        var m = mins % 60;
+        var suffix = h24 >= 12 ? 'PM' : 'AM';
+        var h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+        return h12 + ':' + String(m).padStart(2, '0') + ' ' + suffix;
+      }
+
+      // =======================================================================
+      // 2. ROOMS & SCHEDULE DATA (All 22 Teams, LeoX & LeoP, First Names Only)
+      // =======================================================================
+      var ROOMS = [
+        { id: '260-307', note: '10 IOAs' },
+        { id: '260-315', note: '8 IOAs' },
+        { id: '260-349', note: '4 IOAs' }
+      ];
+
+      var RAW_SESSIONS = [
+        // Thursday, 26 November 2026
+        { group: 'F07',   day: 'THU', start: 660,  end: 720,  room: '260-307', sup: 'LeoX',     gta: 'Haoyu' },
+        { group: 'F06',   day: 'THU', start: 720,  end: 780,  room: '260-307', sup: 'LeoX',     gta: 'Yuqing' },
+        { group: 'MKT01', day: 'THU', start: 780,  end: 840,  room: '260-315', sup: 'LeoP',     gta: 'Malek' },
+        { group: 'MKT02', day: 'THU', start: 900,  end: 960,  room: '260-315', sup: 'LeoP',     gta: 'Malek' },
+        { group: 'F01',   day: 'THU', start: 960,  end: 1020, room: '260-307', sup: 'Zijun',    gta: 'Haoyu' },
+
+        // Friday, 27 November 2026
+        { group: 'F04',   day: 'FRI', start: 540,  end: 600,  room: '260-349', sup: 'LeoX',     gta: 'Haoyu' },
+        { group: 'SC02',  day: 'FRI', start: 540,  end: 600,  room: '260-307', sup: 'Param',    gta: 'Mina' },
+        { group: 'SC05',  day: 'FRI', start: 600,  end: 660,  room: '260-307', sup: 'Subhamoy', gta: 'Mina' },
+        { group: 'SC10',  day: 'FRI', start: 600,  end: 660,  room: '260-315', sup: 'Param',    gta: 'Hannah' },
+        { group: 'F03',   day: 'FRI', start: 660,  end: 720,  room: '260-315', sup: 'Zijun',    gta: 'Yuqing' },
+        { group: 'F02',   day: 'FRI', start: 720,  end: 780,  room: '260-315', sup: 'Zijun',    gta: 'Yuqing' },
+        { group: 'SC09',  day: 'FRI', start: 720,  end: 780,  room: '260-307', sup: 'Param',    gta: 'Aakanksha' },
+        { group: 'F05',   day: 'FRI', start: 780,  end: 840,  room: '260-315', sup: 'Zijun',    gta: 'Yuqing' },
+        { group: 'SC03',  day: 'FRI', start: 780,  end: 840,  room: '260-307', sup: 'Subhamoy', gta: 'Aakanksha' },
+        { group: 'MKT03', day: 'FRI', start: 840,  end: 900,  room: '260-349', sup: 'Sylvia',   gta: 'Yi' },
+        { group: 'SC01',  day: 'FRI', start: 840,  end: 900,  room: '260-307', sup: 'John',     gta: 'Aakanksha' },
+        { group: 'MKT04', day: 'FRI', start: 900,  end: 960,  room: '260-349', sup: 'Sylvia',   gta: 'Yi' },
+        { group: 'SC08',  day: 'FRI', start: 900,  end: 960,  room: '260-315', sup: 'John',     gta: 'Hannah' },
+        { group: 'MKT05', day: 'FRI', start: 960,  end: 1020, room: '260-349', sup: 'Sylvia',   gta: 'Yi' },
+        { group: 'SC06',  day: 'FRI', start: 960,  end: 1020, room: '260-315', sup: 'Subhamoy', gta: 'Hannah' },
+        { group: 'SC04',  day: 'FRI', start: 1020, end: 1080, room: '260-307', sup: 'John',     gta: 'Mina' },
+        { group: 'SC07',  day: 'FRI', start: 1080, end: 1140, room: '260-307', sup: 'John',     gta: 'Mina' }
+      ];
+
+      var SESSIONS = RAW_SESSIONS.map(function (s) {
+        var prev = RAW_SESSIONS.find(function (p) {
+          return p.room === s.room && p.day === s.day && p.end === s.start;
+        });
+        var next = RAW_SESSIONS.find(function (n) {
+          return n.room === s.room && n.day === s.day && n.start === s.end;
+        });
+        return {
+          group: s.group,
+          day: s.day,
+          start: s.start,
+          end: s.end,
+          room: s.room,
+          sup: s.sup,
+          gta: s.gta,
+          startTick: encodeTick(s.day, s.start),
+          endTick: encodeTick(s.day, s.end),
+          supStaysFromPrev: Boolean(prev && prev.sup === s.sup),
+          supStaysToNext: Boolean(next && next.sup === s.sup),
+          gtaStaysFromPrev: Boolean(prev && prev.gta === s.gta),
+          gtaStaysToNext: Boolean(next && next.gta === s.gta)
+        };
+      });
+
+      function streamClass(group) {
+        if (group.indexOf('F') === 0) return 'f';
+        if (group.indexOf('MKT') === 0) return 'mkt';
+        return 'sc';
+      }
+
+      // Sync visual track widths on slider
+      var thuPct = (THU_SPAN / TOTAL_TICKS) * 100;
+      var brkPct = ((BREAK_SPAN + 1) / TOTAL_TICKS) * 100;
+      var friPct = (FRI_SPAN / TOTAL_TICKS) * 100;
+      document.getElementById('visualTrack').innerHTML =
+        '<div class="seg-thu" style="width:' + thuPct + '%">THU 26</div>' +
+        '<div class="seg-brk" style="width:' + brkPct + '%"><span class="seg-brk-tag">BREAK</span></div>' +
+        '<div class="seg-fri" style="width:' + friPct + '%">FRI 27</div>';
+
+      // =======================================================================
+      // 3. OCCUPANCY & TRANSITION EVALUATION AT TICK
+      // =======================================================================
+      function getRoomState(roomId, tick, info) {
+        var roomSessions = SESSIONS.filter(function (s) { return s.room === roomId; });
+        var insideList = [];
+        var doorwayList = [];
+        var corridorPerson = null;
+
+        var phaseLabel = 'Room Vacant';
+        var phaseTone = 'vacant';
+        var activeSession = null;
+        var nextText = '';
+
+        if (info.isBreak) {
+          return {
+            roomSessions: roomSessions,
+            insideList: insideList,
+            doorwayList: doorwayList,
+            corridorPerson: corridorPerson,
+            phaseLabel: 'Closed Overnight • Resumes Fri 09:00',
+            phaseTone: 'vacant',
+            activeSession: null,
+            nextText: 'Fri 09:00'
+          };
+        }
+
+        var t = info.mins;
+        var daySessions = roomSessions.filter(function (s) { return s.day === info.day; });
+
+        for (var i = 0; i < daySessions.length; i++) {
+          var s = daySessions[i];
+          var T0 = s.start;
+          var T1 = s.end;
+
+          if (t >= T0 && t < T1) {
+            activeSession = s;
+          }
+
+          // --- Supervisor ---
+          if (!s.supStaysFromPrev && t >= T0 - 5 && t < T0) {
+            doorwayList.push({
+              role: 'sup', roleLabel: 'Sup', name: s.sup,
+              statusText: 'Entering for ' + s.group,
+              tagClass: 'enter', tagLabel: '→ Entering'
+            });
+          } else if (t >= T0 && t < T1 - 5) {
+            insideList.push({
+              role: 'sup', roleLabel: 'Sup', name: s.sup,
+              statusText: s.supStaysFromPrev && t < T0 + 5 ? 'Stayed from prev slot' : 'Assessing IOA at panel desk',
+              tagClass: 'in', tagLabel: '● In Room'
+            });
+          } else if (t >= T1 - 5 && t < T1) {
+            if (s.supStaysToNext) {
+              insideList.push({
+                role: 'sup', roleLabel: 'Sup', name: s.sup,
+                statusText: 'Staying for next IOA',
+                tagClass: 'in', tagLabel: '● In Room'
+              });
+            } else {
+              doorwayList.push({
+                role: 'sup', roleLabel: 'Sup', name: s.sup,
+                statusText: 'Session ended • Exiting',
+                tagClass: 'leave', tagLabel: '← Exiting'
+              });
+            }
+          }
+
+          // --- GTA ---
+          if (!s.gtaStaysFromPrev && t >= T0 - 5 && t < T0) {
+            doorwayList.push({
+              role: 'gta', roleLabel: 'GTA', name: s.gta,
+              statusText: 'Entering for ' + s.group,
+              tagClass: 'enter', tagLabel: '→ Entering'
+            });
+          } else if (t >= T0 && t < T1 - 5) {
+            insideList.push({
+              role: 'gta', roleLabel: 'GTA', name: s.gta,
+              statusText: s.gtaStaysFromPrev && t < T0 + 5 ? 'Stayed from prev slot' : 'Timing & marking support',
+              tagClass: 'in', tagLabel: '● In Room'
+            });
+          } else if (t >= T1 - 5 && t < T1) {
+            if (s.gtaStaysToNext) {
+              insideList.push({
+                role: 'gta', roleLabel: 'GTA', name: s.gta,
+                statusText: 'Staying for next IOA',
+                tagClass: 'in', tagLabel: '● In Room'
+              });
+            } else {
+              doorwayList.push({
+                role: 'gta', roleLabel: 'GTA', name: s.gta,
+                statusText: 'Exiting room',
+                tagClass: 'leave', tagLabel: '← Exiting'
+              });
+            }
+          }
+
+          // --- Student Team ---
+          if (t >= T0 - 5 && t < T0) {
+            corridorPerson = {
+              role: 'team', roleLabel: 'Team', name: s.group,
+              statusText: 'Ready outside for ' + format24(T0),
+              tagClass: 'waiting', tagLabel: '⏳ Waiting'
+            };
+          } else if (t >= T0 && t < T0 + 5) {
+            doorwayList.push({
+              role: 'team', roleLabel: 'Team', name: s.group,
+              statusText: 'Entering room (' + format24(T0) + '–' + format24(T0 + 5) + ')',
+              tagClass: 'enter', tagLabel: '→ Entering'
+            });
+          } else if (t >= T0 + 5 && t < T0 + 45) {
+            var isOral = t >= T0 + 15;
+            insideList.push({
+              role: 'team', roleLabel: 'Team', name: s.group,
+              statusText: isOral ? 'Individual Orals (until ' + format24(T0 + 45) + ')' : 'Group Briefing (until ' + format24(T0 + 15) + ')',
+              tagClass: 'in', tagLabel: '🎙️ IOA Active'
+            });
+          } else if (t >= T0 + 45 && t < T0 + 50) {
+            doorwayList.push({
+              role: 'team', roleLabel: 'Team', name: s.group,
+              statusText: '45m up • Exiting (' + format24(T0 + 45) + '–' + format24(T0 + 50) + ')',
+              tagClass: 'leave', tagLabel: '← Exiting'
+            });
+          }
+        }
+
+        // Phase banner label
+        if (activeSession) {
+          var el = t - activeSession.start;
+          if (el < 5) {
+            phaseLabel = activeSession.group + ' Entering (' + (5 - el) + 'm left)';
+            phaseTone = 'prep';
+          } else if (el < 15) {
+            phaseLabel = activeSession.group + ' Briefing (' + (15 - el) + 'm left)';
+            phaseTone = 'active';
+          } else if (el < 45) {
+            phaseLabel = activeSession.group + ' Oral Q&A (' + (45 - el) + 'm left)';
+            phaseTone = 'active';
+          } else if (el < 50) {
+            phaseLabel = activeSession.group + ' Exiting (' + (50 - el) + 'm left)';
+            phaseTone = 'handover';
+          } else if (el < 55) {
+            phaseLabel = 'Panel Debrief (' + (55 - el) + 'm left)';
+            phaseTone = 'debrief';
+          } else {
+            var nextSameDay = daySessions.find(function (s) { return s.start === activeSession.end; });
+            phaseLabel = nextSameDay
+              ? 'Handover → ' + nextSameDay.group + ' (' + (60 - el) + 'm)'
+              : 'Closing & Exit (' + (60 - el) + 'm)';
+            phaseTone = nextSameDay ? 'handover' : 'debrief';
+          }
+        } else {
+          var upcoming = daySessions.find(function (s) { return t >= s.start - 5 && t < s.start; });
+          if (upcoming) {
+            phaseLabel = 'Setup • ' + upcoming.group + ' starts in ' + (upcoming.start - t) + 'm';
+            phaseTone = 'prep';
+          } else {
+            var nextLater = daySessions.find(function (s) { return s.start > t; });
+            if (nextLater) {
+              phaseLabel = 'Vacant • Next: ' + nextLater.group + ' at ' + format24(nextLater.start);
+              nextText = 'Next ' + nextLater.group + ' ' + format24(nextLater.start);
+            } else {
+              phaseLabel = info.day === 'THU' ? 'Done for Thu • Resumes Fri' : 'Done for Day';
+              nextText = info.day === 'THU' ? 'Fri 09:00' : 'Finished';
+            }
+            phaseTone = 'vacant';
+          }
+        }
+
+        return {
+          roomSessions: roomSessions,
+          insideList: insideList,
+          doorwayList: doorwayList,
+          corridorPerson: corridorPerson,
+          phaseLabel: phaseLabel,
+          phaseTone: phaseTone,
+          activeSession: activeSession,
+          nextText: nextText
+        };
+      }
+
+      // =======================================================================
+      // 4. SINGLE-LINE BADGE & ROOM CARD RENDERERS
+      // =======================================================================
+      function badgeHtml(p) {
+        return (
+          '<div class="p-badge role-' + p.role + '" title="' + p.roleLabel + ' ' + p.name + ' · ' + p.statusText + '">' +
+            '<div class="p-left">' +
+              '<span class="role-pill ' + p.role + '">' + p.roleLabel + '</span>' +
+              '<span class="p-text"><strong>' + p.name + '</strong> <span>· ' + p.statusText + '</span></span>' +
+            '</div>' +
+            '<span class="state-tag ' + p.tagClass + '">' + p.tagLabel + '</span>' +
+          '</div>'
+        );
+      }
+
+      function miniBarHtml(roomSessions, tick) {
+        var playPct = (tick / TOTAL_TICKS) * 100;
+        var brkLeft = (THU_SPAN / TOTAL_TICKS) * 100;
+        var brkWidth = ((BREAK_SPAN + 1) / TOTAL_TICKS) * 100;
+
+        var blocks = '<div class="g-break-band" style="left:' + brkLeft + '%;width:' + brkWidth + '%;"></div>';
+        for (var i = 0; i < roomSessions.length; i++) {
+          var s = roomSessions[i];
+          var left = (s.startTick / TOTAL_TICKS) * 100;
+          var width = ((s.endTick - s.startTick) / TOTAL_TICKS) * 100;
+          var isNow = tick >= s.startTick && tick < s.endTick;
+          blocks +=
+            '<div onclick="window.jumpTick(' + s.startTick + ')" ' +
+            'title="' + s.group + ' (' + s.day + ' ' + format24(s.start) + '–' + format24(s.end) + ') • Sup: ' + s.sup + ' | GTA: ' + s.gta + '" ' +
+            'class="g-block ' + streamClass(s.group) + (isNow ? ' is-now' : '') + '" ' +
+            'style="left:' + left + '%;width:' + width + '%;font-size:8px;padding:0 2px;">' +
+            s.group +
+            '</div>';
+        }
+        return (
+          '<div class="room-footer">' +
+            '<div class="mini-bar">' +
+              blocks +
+              '<div class="playhead-line" style="left:' + playPct + '%;"></div>' +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderRooms(tick, info) {
+        var activeCount = 0;
+        var transitCount = 0;
+        var html = '';
+
+        for (var i = 0; i < ROOMS.length; i++) {
+          var r = ROOMS[i];
+          var st = getRoomState(r.id, tick, info);
+          if (st.insideList.length > 0) activeCount++;
+          transitCount += st.doorwayList.length + (st.corridorPerson ? 1 : 0);
+
+          var cardClass = st.phaseTone === 'active'
+            ? 'room-card active-session'
+            : (st.phaseTone === 'handover' || st.phaseTone === 'prep')
+            ? 'room-card handover-session'
+            : 'room-card';
+
+          var isDnd = st.phaseTone === 'active' || st.phaseTone === 'prep' || st.phaseTone === 'debrief';
+
+          // Inside Room Zone (Fixed 108px: header + up to 3 single-line 24px badges)
+          var insideContent = st.insideList.length > 0
+            ? st.insideList.slice(0, 3).map(badgeHtml).join('')
+            : '<div class="empty-slot">Room interior empty</div>';
+
+          // Doorway Zone (Fixed 126px: header + up to 4 single-line 22px badges for 2 out / 2 in)
+          var doorwayContent = st.doorwayList.length > 0
+            ? st.doorwayList.slice(0, 4).map(badgeHtml).join('')
+            : '<div class="empty-slot">Doorway clear</div>';
+
+          // Corridor Zone (Fixed 54px: header + full 24px waiting badge with bottom clearance)
+          var corridorHtml =
+            '<div class="zone-corridor' + (st.corridorPerson ? ' has-waiting' : '') + '">' +
+              '<div class="zone-hdr">' +
+                '<span>🚶 Corridor Waiting</span>' +
+                '<span>' + (st.corridorPerson ? '1 ready' : st.nextText) + '</span>' +
+              '</div>' +
+              (st.corridorPerson
+                ? badgeHtml(st.corridorPerson)
+                : '<div class="empty-slot">Corridor clear</div>') +
+            '</div>';
+
+          html +=
+            '<article class="' + cardClass + '">' +
+              '<div class="room-header">' +
+                '<div style="display:flex;align-items:center;gap:7px;">' +
+                  '<span class="room-id-pill">Room ' + r.id + '</span>' +
+                  '<span class="room-sub">' + r.note + '</span>' +
+                '</div>' +
+                (isDnd
+                  ? '<span class="dnd-pill">Do Not Disturb</span>'
+                  : '<span class="dnd-pill open">Open</span>') +
+              '</div>' +
+
+              '<div class="phase-strip ' + st.phaseTone + '">' +
+                '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + st.phaseLabel + '</span>' +
+                (st.activeSession
+                  ? '<span style="font-size:10px;font-variant-numeric:tabular-nums;flex-shrink:0;">' +
+                      format24(st.activeSession.start) + '–' + format24(st.activeSession.end) +
+                    '</span>'
+                  : '') +
+              '</div>' +
+
+              '<div class="room-zones">' +
+                '<div class="zone-inside">' +
+                  '<div class="zone-hdr">' +
+                    '<span>🪑 Inside Room (Panel &amp; IOA)</span>' +
+                    '<span>' + st.insideList.length + ' inside</span>' +
+                  '</div>' +
+                  '<div class="badge-stack">' + insideContent + '</div>' +
+                '</div>' +
+
+                '<div class="zone-doorway' + (st.doorwayList.length > 0 ? ' has-traffic' : '') + '">' +
+                  '<div class="zone-hdr">' +
+                    '<span>🚪 Doorway (Entering / Exiting)</span>' +
+                    '<span>' + st.doorwayList.length + ' moving</span>' +
+                  '</div>' +
+                  '<div class="badge-stack">' + doorwayContent + '</div>' +
+                '</div>' +
+
+                corridorHtml +
+              '</div>' +
+
+              miniBarHtml(st.roomSessions, tick) +
+            '</article>';
+        }
+
+        document.getElementById('roomsGrid').innerHTML = html;
+        document.getElementById('activeRoomCount').textContent = String(activeCount);
+        document.getElementById('transitCount').textContent = String(transitCount);
+      }
+
+      // =======================================================================
+      // 5. MASTER 2-DAY GANTT RENDERER
+      // =======================================================================
+      function renderGantt(tick) {
+        var playPct = (tick / TOTAL_TICKS) * 100;
+        var brkLeft = (THU_SPAN / TOTAL_TICKS) * 100;
+        var brkWidth = ((BREAK_SPAN + 1) / TOTAL_TICKS) * 100;
+
+        var markers = '';
+        [11, 12, 13, 14, 15, 16, 17].forEach(function (h) {
+          var pct = (encodeTick('THU', h * 60) / TOTAL_TICKS) * 100;
+          markers += '<div style="position:absolute;left:' + pct + '%;top:0;bottom:0;border-left:1px solid #cbd5e1;padding-left:2px;font-size:9px;font-weight:700;color:#475569;">' + String(h).padStart(2, '0') + ':00</div>';
+        });
+        [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].forEach(function (h) {
+          var pct = (encodeTick('FRI', h * 60) / TOTAL_TICKS) * 100;
+          markers += '<div style="position:absolute;left:' + pct + '%;top:0;bottom:0;border-left:1px solid #cbd5e1;padding-left:2px;font-size:9px;font-weight:700;color:#475569;">' + String(h).padStart(2, '0') + ':00</div>';
+        });
+
+        var rowsHtml = '';
+        for (var i = 0; i < ROOMS.length; i++) {
+          var r = ROOMS[i];
+          var roomSessions = SESSIONS.filter(function (s) { return s.room === r.id; });
+          var blocksHtml = '<div class="g-break-band" style="left:' + brkLeft + '%;width:' + brkWidth + '%;">BREAK</div>';
+
+          for (var j = 0; j < roomSessions.length; j++) {
+            var s = roomSessions[j];
+            var left = (s.startTick / TOTAL_TICKS) * 100;
+            var width = ((s.endTick - s.startTick) / TOTAL_TICKS) * 100;
+            var isNow = tick >= s.startTick && tick < s.endTick;
+            blocksHtml +=
+              '<div onclick="event.stopPropagation();window.jumpTick(' + s.startTick + ')" ' +
+              'title="' + s.group + ' (' + s.day + ' ' + format24(s.start) + '–' + format24(s.end) + ') • Sup: ' + s.sup + ' | GTA: ' + s.gta + '" ' +
+              'class="g-block ' + streamClass(s.group) + (isNow ? ' is-now' : '') + '" ' +
+              'style="left:' + left + '%;width:' + width + '%;">' +
+              s.group +
+              '</div>';
+          }
+
+          rowsHtml +=
+            '<div class="gantt-row">' +
+              '<div class="gantt-label-col">' + r.id + '</div>' +
+              '<div class="gantt-track js-track">' + blocksHtml + '</div>' +
+            '</div>';
+        }
+
+        var ganttEl = document.getElementById('masterGantt');
+        ganttEl.innerHTML =
+          '<div class="gantt-inner">' +
+            '<div class="gantt-axis-row">' +
+              '<div class="gantt-label-col" style="font-size:9px;color:#64748b;text-transform:uppercase;">Room</div>' +
+              '<div class="gantt-axis-track js-track">' + markers + '</div>' +
+            '</div>' +
+            '<div style="position:relative;">' +
+              rowsHtml +
+              '<div style="position:absolute;top:0;bottom:0;left:74px;right:0;pointer-events:none;">' +
+                '<div class="playhead-line" style="left:' + playPct + '%;"></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        var tracks = ganttEl.querySelectorAll('.js-track');
+        for (var k = 0; k < tracks.length; k++) {
+          (function (track) {
+            track.addEventListener('click', function (e) {
+              var rect = track.getBoundingClientRect();
+              var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              window.jumpTick(Math.round(ratio * TOTAL_TICKS));
+            });
+          })(tracks[k]);
+        }
+      }
+
+      // =======================================================================
+      // 6. MAIN RENDER & PLAYBACK LOOP
+      // =======================================================================
+      var currentTick = 15; // Thu 11:00 AM (1st session F07 immediately active)
+      var isPlaying = false;
+      var speed = 1;
+      var lastTs = null;
+      var acc = 0;
+
+      var sliderEl = document.getElementById('timeSlider');
+      var dayPillEl = document.getElementById('dayPill');
+      var clock24El = document.getElementById('clock24');
+      var clock12El = document.getElementById('clock12');
+      var bannerEl = document.getElementById('statusBanner');
+      var bannerTextEl = document.getElementById('bannerText');
+      var skipBreakBtn = document.getElementById('skipBreakBtn');
+      var playIconEl = document.getElementById('playIcon');
+      var playLabelEl = document.getElementById('playLabel');
+
+      function render(newTick) {
+        currentTick = Math.max(0, Math.min(TOTAL_TICKS, Math.round(newTick)));
+        sliderEl.value = String(currentTick);
+
+        var info = decodeTick(currentTick);
+        dayPillEl.textContent = info.dayLabel;
+        clock24El.textContent = format24(info.mins);
+        clock12El.textContent = format12(info.mins);
+
+        if (info.isBreak) {
+          dayPillEl.className = 'day-pill brk';
+          bannerEl.className = 'status-banner is-break';
+          bannerTextEl.innerHTML = '🌙 <strong>Overnight Break (Thu 17:15 → Fri 08:45):</strong> All 3 IOA rooms are closed overnight. Sessions resume Friday at 09:00.';
+          skipBreakBtn.classList.remove('hidden');
+        } else {
+          dayPillEl.className = info.day === 'FRI' ? 'day-pill fri' : 'day-pill';
+          bannerEl.className = 'status-banner';
+          bannerTextEl.innerHTML =
+            '<strong>IOA Cycle (<code>T</code>–<code>T+60</code>):</strong> ' +
+            'Sup &amp; GTA enter <code>[T-5, T)</code> (or stay put) • Team waits <code>T-5</code>, enters <code>[T, T+5)</code>, IOA <code>[T+5, T+45)</code>, exits <code>[T+45, T+50)</code> • Debrief <code>[T+50, T+60)</code>';
+          skipBreakBtn.classList.add('hidden');
+        }
+
+        renderRooms(currentTick, info);
+        renderGantt(currentTick);
+      }
+
+      window.jumpTick = function (tick) {
+        setPlaying(false);
+        render(tick);
+      };
+
+      function setPlaying(play) {
+        isPlaying = play;
+        if (isPlaying) {
+          if (currentTick >= TOTAL_TICKS) render(0);
+          playIconEl.textContent = '⏸';
+          playLabelEl.textContent = 'Pause';
+          lastTs = performance.now();
+          acc = 0;
+          requestAnimationFrame(stepFrame);
+        } else {
+          playIconEl.textContent = '▶';
+          playLabelEl.textContent = 'Play';
+          lastTs = null;
+        }
+      }
+
+      function stepFrame(now) {
+        if (!isPlaying) return;
+        if (lastTs !== null) {
+          acc += ((now - lastTs) / 1000) * speed;
+          if (acc >= 1) {
+            var ticks = Math.floor(acc);
+            acc -= ticks;
+            if (currentTick + ticks >= TOTAL_TICKS) {
+              render(TOTAL_TICKS);
+              setPlaying(false);
+              return;
+            }
+            render(currentTick + ticks);
+          }
+        }
+        lastTs = now;
+        requestAnimationFrame(stepFrame);
+      }
+
+      sliderEl.addEventListener('input', function (e) {
+        setPlaying(false);
+        render(Number(e.target.value));
+      });
+
+      document.getElementById('playPauseBtn').addEventListener('click', function () {
+        setPlaying(!isPlaying);
+      });
+
+      document.getElementById('stepBackBtn').addEventListener('click', function () {
+        setPlaying(false);
+        render(currentTick - 1);
+      });
+
+      document.getElementById('stepFwdBtn').addEventListener('click', function () {
+        setPlaying(false);
+        render(currentTick + 1);
+      });
+
+      skipBreakBtn.addEventListener('click', function () {
+        window.jumpTick(446); // Fri 08:55
+      });
+
+      var speedBtns = document.querySelectorAll('.speed-btn');
+      for (var i = 0; i < speedBtns.length; i++) {
+        speedBtns[i].addEventListener('click', function () {
+          speed = Number(this.getAttribute('data-speed'));
+          for (var j = 0; j < speedBtns.length; j++) {
+            speedBtns[j].classList.remove('active');
+          }
+          this.classList.add('active');
+        });
+      }
+
+      var jumpBtns = document.querySelectorAll('.jump-btn');
+      for (var i = 0; i < jumpBtns.length; i++) {
+        jumpBtns[i].addEventListener('click', function () {
+          window.jumpTick(Number(this.getAttribute('data-tick')));
+        });
+      }
+
+      window.addEventListener('keydown', function (e) {
+        if (e.target && e.target.tagName === 'INPUT') return;
+        var step = e.shiftKey ? 5 : 1;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          setPlaying(!isPlaying);
+        } else if (e.code === 'ArrowLeft') {
+          e.preventDefault();
+          setPlaying(false);
+          render(currentTick - step);
+        } else if (e.code === 'ArrowRight') {
+          e.preventDefault();
+          setPlaying(false);
+          render(currentTick + step);
+        }
+      });
+
+      // Execute synchronously AND on DOMContentLoaded / load so first block always renders
+      render(15);
+      window.addEventListener('DOMContentLoaded', function () { render(currentTick); });
+      window.addEventListener('load', function () { render(currentTick); });
+    })();
+  </script>
+</body>
+</html>
